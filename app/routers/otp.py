@@ -8,6 +8,11 @@ from app.schemas.otp import VerifyOTPRequest
 from app.security import verify_password
 from app.auth_token import create_access_token
 
+from app.models.admin import SuperAdmin
+from app.models.student import Student
+from app.models.employee import Employee
+
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -19,10 +24,10 @@ def verify_login_otp(
     data: VerifyOTPRequest,
     db: Session = Depends(get_db)
 ):
-    # Find OTP for this email
+
+    # Get the latest OTP
     otp_record = (
         db.query(OTP)
-        .filter(OTP.email == data.email)
         .order_by(OTP.created_at.desc())
         .first()
     )
@@ -33,8 +38,9 @@ def verify_login_otp(
             detail="OTP not found"
         )
 
-    # Check expiry
+    # Check expiration
     if datetime.utcnow() > otp_record.expires_at:
+
         db.delete(otp_record)
         db.commit()
 
@@ -43,21 +49,72 @@ def verify_login_otp(
             detail="OTP has expired"
         )
 
-    # Verify OTP
-    if not verify_password(data.otp, otp_record.otp_hash):
+    # Check OTP
+    if not verify_password(
+        data.otp,
+        otp_record.otp_hash
+    ):
+
         raise HTTPException(
             status_code=400,
             detail="Invalid OTP"
         )
 
-    # OTP is correct
+    email = otp_record.email
+
+    # Find user
+    admin = db.query(SuperAdmin).filter(
+        SuperAdmin.email == email
+    ).first()
+
+    if admin:
+
+        user_id = admin.id
+        role = "super_admin"
+
+    else:
+
+        employee = db.query(Employee).filter(
+            Employee.email == email
+        ).first()
+
+        if employee:
+
+            user_id = employee.id
+            role = employee.role
+
+        else:
+
+            student = db.query(Student).filter(
+                Student.email == email
+            ).first()
+
+            if not student:
+                raise HTTPException(
+                    status_code=404,
+                    detail="User account not found"
+                )
+
+            user_id = student.id
+            role = "student"
+
+    # Create JWT
+    access_token = create_access_token(
+        email=email,
+        role=role,
+        user_id=user_id
+    )
+
+    # Delete used OTP
     db.delete(otp_record)
     db.commit()
 
     return {
         "success": True,
         "message": "OTP verified successfully",
-        "email": data.email
-    
-    
+        "access_token": access_token,
+        "token_type": "bearer",
+        "email": email,
+        "role": role,
+        "user_id": user_id
     }

@@ -14,12 +14,17 @@ if not SECRET_KEY:
 ALGORITHM = "HS256"
 
 
-def create_access_token(email: str):
+def create_access_token(
+    email: str,
+    role: str,
+    user_id: int
+):
     expires = datetime.now(timezone.utc) + timedelta(hours=2)
 
     payload = {
         "sub": email,
-        "role": "super_admin",
+        "user_id": user_id,
+        "role": role,
         "exp": expires
     }
 

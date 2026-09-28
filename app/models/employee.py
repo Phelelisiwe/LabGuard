@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.database import Base
 
@@ -16,3 +17,5 @@ class Employee(Base):
     password_hash = Column(String, nullable=False)
     email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
+
+    modules = relationship("Module", back_populates="lecturer")
