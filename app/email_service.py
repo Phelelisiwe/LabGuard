@@ -25,7 +25,7 @@ def send_otp_email(receiver_email: str, otp: str):
     message = EmailMessage()
 
     message["Subject"] = "LabGuard Login OTP"
-    message["From"] = smtp_email
+    message["From"] = os.getenv("SMTP_SENDER")
     message["To"] = receiver_email
 
     message.set_content(
@@ -73,7 +73,7 @@ def send_password_reset_email(
     message = EmailMessage()
 
     message["Subject"] = "LabGuard Password Reset"
-    message["From"] = smtp_email
+    message["From"] = os.getenv("SMTP_SENDER")
     message["To"] = receiver_email
 
     message.set_content(
