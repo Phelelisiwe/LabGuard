@@ -8,7 +8,7 @@ function UpdateInformation() {
     <div className="update-page">
 
       <nav className="update-navbar">
-
+git push -u origin main
         <div className="update-logo">
           LabGuard
         </div>

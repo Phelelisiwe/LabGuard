@@ -1,4 +1,6 @@
 
+from typing import Any, Dict
+
 from pydantic import BaseModel, Field
 
 
@@ -14,19 +16,27 @@ class FaceRegistration(BaseModel):
 
 
 # =========================================================
-# FINGERPRINT / PHONE BIOMETRIC REGISTRATION
+# WEBAUTHN REGISTRATION RESPONSE
 # =========================================================
 
 class FingerprintRegistration(BaseModel):
-    credential_id: str = Field(
-        min_length=1,
-        description="WebAuthn credential ID created by the student's phone"
+    """
+    WebAuthn registration response returned by the student's
+    phone/browser after successful biometric authentication.
+    """
+
+    id: str
+    rawId: str
+
+    response: Dict[str, Any]
+
+    type: str = "public-key"
+
+    clientExtensionResults: Dict[str, Any] = Field(
+        default_factory=dict
     )
 
-    public_key: str = Field(
-        min_length=1,
-        description="WebAuthn public key associated with the phone credential"
-    )
+    authenticatorAttachment: str | None = None
 
 
 # =========================================================
