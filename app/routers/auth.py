@@ -1,6 +1,6 @@
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import delete
 from datetime import datetime, timedelta
 import secrets
 
@@ -29,12 +29,12 @@ def login(
     db: Session = Depends(get_db)
 ):
 
+    # ---------------------------------
+    # Find user
+    # ---------------------------------
+
     user = None
     role = None
-
-    # -------------------------
-    # SUPER ADMIN
-    # -------------------------
 
     admin = db.query(SuperAdmin).filter(
         SuperAdmin.email == login_data.email
@@ -44,12 +44,7 @@ def login(
         user = admin
         role = "super_admin"
 
-    # -------------------------
-    # EMPLOYEE / LECTURER
-    # -------------------------
-
     if not user:
-
         employee = db.query(Employee).filter(
             Employee.email == login_data.email
         ).first()
@@ -58,12 +53,7 @@ def login(
             user = employee
             role = employee.role
 
-    # -------------------------
-    # STUDENT
-    # -------------------------
-
     if not user:
-
         student = db.query(Student).filter(
             Student.email == login_data.email
         ).first()
@@ -72,9 +62,9 @@ def login(
             user = student
             role = "student"
 
-    # -------------------------
-    # USER NOT FOUND
-    # -------------------------
+    # ---------------------------------
+    # User not found
+    # ---------------------------------
 
     if not user:
         raise HTTPException(
@@ -82,9 +72,9 @@ def login(
             detail="Invalid email or password"
         )
 
-    # -------------------------
-    # PASSWORD
-    # -------------------------
+    # ---------------------------------
+    # Check password
+    # ---------------------------------
 
     if not verify_password(
         login_data.password,
@@ -95,9 +85,9 @@ def login(
             detail="Invalid email or password"
         )
 
-    # -------------------------
-    # CREATE OTP
-    # -------------------------
+    # ---------------------------------
+    # Generate OTP
+    # ---------------------------------
 
     otp = str(
         secrets.randbelow(900000) + 100000
@@ -110,19 +100,23 @@ def login(
         + timedelta(minutes=3)
     )
 
-    # -------------------------
-    # REMOVE PREVIOUS OTPS
-    # -------------------------
+    # ---------------------------------
+    # Remove previous OTPs
+    #
+    # IMPORTANT:
+    # Use a database-level DELETE instead
+    # of db.delete(otp_object).
+    # ---------------------------------
 
-    db.query(OTP).filter(
-        OTP.email == user.email
-    ).delete(
-        synchronize_session=False
+    db.execute(
+        delete(OTP).where(
+            OTP.email == user.email
+        )
     )
 
-    # -------------------------
-    # SAVE NEW OTP
-    # -------------------------
+    # ---------------------------------
+    # Create new OTP
+    # ---------------------------------
 
     new_otp = OTP(
         email=user.email,
@@ -131,12 +125,9 @@ def login(
     )
 
     db.add(new_otp)
-    db.commit()
 
-    # -------------------------
-    # SEND OTP EMAIL
-    # -------------------------
-
+    # Send the email before committing
+    # the new OTP.
     try:
 
         send_otp_email(
@@ -146,22 +137,33 @@ def login(
 
     except Exception as e:
 
-        # Do not delete new_otp here.
-        #
-        # Another login request may have already
-        # removed this OTP from the database.
-        #
-        # Leaving the record in the database avoids
-        # SQLAlchemy ObjectDeletedError.
+        db.rollback()
 
         raise HTTPException(
             status_code=500,
             detail=f"Failed to send OTP email: {str(e)}"
         )
 
-    # -------------------------
-    # SUCCESS
-    # -------------------------
+    # ---------------------------------
+    # Save OTP
+    # ---------------------------------
+
+    try:
+
+        db.commit()
+
+    except Exception as e:
+
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save OTP: {str(e)}"
+        )
+
+    # ---------------------------------
+    # Successful login step
+    # ---------------------------------
 
     return {
         "success": True,
@@ -169,4 +171,3 @@ def login(
         "email": user.email,
         "role": role
     }
-
