@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -109,10 +110,19 @@ def login(
         + timedelta(minutes=3)
     )
 
-    # Remove previous OTPs
+    # -------------------------
+    # REMOVE PREVIOUS OTPS
+    # -------------------------
+
     db.query(OTP).filter(
         OTP.email == user.email
-    ).delete()
+    ).delete(
+        synchronize_session=False
+    )
+
+    # -------------------------
+    # SAVE NEW OTP
+    # -------------------------
 
     new_otp = OTP(
         email=user.email,
@@ -124,7 +134,7 @@ def login(
     db.commit()
 
     # -------------------------
-    # SEND EMAIL
+    # SEND OTP EMAIL
     # -------------------------
 
     try:
@@ -136,13 +146,22 @@ def login(
 
     except Exception as e:
 
-        db.delete(new_otp)
-        db.commit()
+        # Do not delete new_otp here.
+        #
+        # Another login request may have already
+        # removed this OTP from the database.
+        #
+        # Leaving the record in the database avoids
+        # SQLAlchemy ObjectDeletedError.
 
         raise HTTPException(
             status_code=500,
             detail=f"Failed to send OTP email: {str(e)}"
         )
+
+    # -------------------------
+    # SUCCESS
+    # -------------------------
 
     return {
         "success": True,
@@ -150,3 +169,4 @@ def login(
         "email": user.email,
         "role": role
     }
+
