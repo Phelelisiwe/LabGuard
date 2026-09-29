@@ -44,7 +44,7 @@ LabGuard System
 """
     )
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    with smtplib.SMTP("smtp-relay.brevo.com", 587) as server:
         server.starttls()
         server.login(
             smtp_email,
@@ -94,11 +94,10 @@ LabGuard System
 """
     )
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    with smtplib.SMTP("smtp-relay.brevo.com", 587) as server:
         server.starttls()
         server.login(
             smtp_email,
             smtp_password
         )
         server.send_message(message)
-
