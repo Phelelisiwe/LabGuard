@@ -1,14 +1,15 @@
-
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import * as faceapi from "@vladmandic/face-api";
 import { useNavigate } from "react-router-dom";
+import { startRegistration } from "@simplewebauthn/browser";
 
 function BiometricRegistration() {
   const navigate = useNavigate();
 
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
 
   const [faceStatus, setFaceStatus] = useState("Not Registered");
   const [fingerprintStatus, setFingerprintStatus] =
@@ -57,7 +58,6 @@ function BiometricRegistration() {
       );
 
       setStudents(response.data);
-
     } catch (err) {
       console.error("Failed to load students:", err);
 
@@ -74,7 +74,6 @@ function BiometricRegistration() {
             : "Failed to load students."
         );
       }
-
     } finally {
       setLoading(false);
     }
@@ -102,7 +101,6 @@ function BiometricRegistration() {
       );
 
       setMessage("Face recognition models loaded.");
-
     } catch (err) {
       console.error(
         "Failed to load face recognition models:",
@@ -114,7 +112,6 @@ function BiometricRegistration() {
       );
 
       throw err;
-
     } finally {
       setFaceLoading(false);
     }
@@ -161,7 +158,6 @@ function BiometricRegistration() {
           ? "Registered"
           : "Not Registered"
       );
-
     } catch (err) {
       console.error(
         "Failed to load biometric status:",
@@ -192,6 +188,13 @@ function BiometricRegistration() {
 
       await loadFaceModels();
 
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError(
+          "Camera access is not supported by this browser."
+        );
+        return;
+      }
+
       const stream =
         await navigator.mediaDevices.getUserMedia({
           video: {
@@ -219,7 +222,6 @@ function BiometricRegistration() {
       setMessage(
         "Camera is ready. Position the student's face in the frame."
       );
-
     } catch (err) {
       console.error("Camera error:", err);
 
@@ -229,7 +231,11 @@ function BiometricRegistration() {
         );
       } else if (err.name === "NotFoundError") {
         setError(
-          "No camera was found on this computer."
+          "No camera was found on this device."
+        );
+      } else if (err.name === "NotReadableError") {
+        setError(
+          "The camera is already being used by another application."
         );
       } else {
         setError(
@@ -302,11 +308,7 @@ function BiometricRegistration() {
 
       const descriptor = detection.descriptor;
 
-      // Convert Float32Array to normal array.
-      const faceEmbedding =
-        Array.from(descriptor).join(",");
-
-      if (descriptor.length !== 128) {
+      if (!descriptor || descriptor.length !== 128) {
         setError(
           "Invalid face embedding generated. Please try again."
         );
@@ -314,6 +316,9 @@ function BiometricRegistration() {
         setMessage("");
         return;
       }
+
+      const faceEmbedding =
+        Array.from(descriptor).join(",");
 
       setMessage(
         "Face detected. Registering biometric information..."
@@ -336,11 +341,10 @@ function BiometricRegistration() {
 
       setMessage(
         response.data.message ||
-        "Face registered successfully."
+          "Face registered successfully."
       );
 
       stopCamera();
-
     } catch (err) {
       console.error(
         "Face registration error:",
@@ -364,7 +368,6 @@ function BiometricRegistration() {
       }
 
       setMessage("");
-
     } finally {
       setCapturing(false);
     }
@@ -374,35 +377,157 @@ function BiometricRegistration() {
   // FINGERPRINT
   // =====================================================
 
-  const handleFingerprintRegistration = () => {
-    if (!selectedStudent) {
-      setError("Please select a student first.");
-      return;
-    }
+  const handleFingerprintRegistration = async () => {
+  if (!selectedStudent) {
+    setError("Please select a student first.");
+    return;
+  }
 
-    if (faceStatus !== "Registered") {
-      setError(
-        "Register the student's face before registering the fingerprint."
-      );
-      return;
-    }
+  if (faceStatus !== "Registered") {
+    setError(
+      "Register the student's face before registering the fingerprint."
+    );
+    return;
+  }
 
+  try {
     setError("");
+    setMessage(
+      "Preparing phone biometric registration..."
+    );
+
+    // --------------------------------------------------
+    // 1. GET REGISTRATION OPTIONS FROM FASTAPI
+    // --------------------------------------------------
+
+    const optionsResponse = await axios.get(
+      `http://127.0.0.1:8000/biometric/students/${selectedStudent}/fingerprint/options`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const optionsJSON = optionsResponse.data;
+
+    // --------------------------------------------------
+    // 2. START REAL PHONE BIOMETRIC REGISTRATION
+    // --------------------------------------------------
 
     setMessage(
-      "Fingerprint registration will use WebAuthn. We will implement this next."
+      "Follow the biometric prompt on the phone."
     );
+
+    const registrationResponse =
+      await startRegistration({
+        optionsJSON,
+      });
+
+    // --------------------------------------------------
+    // 3. SEND THE AUTHENTICATOR RESPONSE TO FASTAPI
+    // --------------------------------------------------
+
+    setMessage(
+      "Biometric captured. Verifying with LabGuard..."
+    );
+
+    const verificationResponse =
+      await axios.post(
+        `http://127.0.0.1:8000/biometric/students/${selectedStudent}/fingerprint/verify`,
+        registrationResponse,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+    // --------------------------------------------------
+    // 4. REGISTRATION SUCCESS
+    // --------------------------------------------------
+
+    if (verificationResponse.data.verified) {
+      setFingerprintStatus("Registered");
+
+      setMessage(
+        verificationResponse.data.message ||
+          "Phone biometric registered successfully."
+      );
+    } else {
+      setError(
+        "The phone biometric could not be verified."
+      );
+
+      setMessage("");
+    }
+
+  } catch (err) {
+    console.error(
+      "Fingerprint registration error:",
+      err
+    );
+
+    const detail =
+      err.response?.data?.detail;
+
+    if (typeof detail === "string") {
+      setError(detail);
+    } else if (
+      err.name === "NotAllowedError"
+    ) {
+      setError(
+        "The biometric registration was cancelled or not allowed."
+      );
+    } else if (
+      err.name === "InvalidStateError"
+    ) {
+      setError(
+        "This phone may already have a passkey registered for LabGuard."
+      );
+    } else {
+      setError(
+        "Fingerprint registration failed. Please try again."
+      );
+    }
+
+    setMessage("");
+  }
+};
+
+  // =====================================================
+  // SEARCHED STUDENTS
+  // =====================================================
+
+  const searchResults =
+    studentSearch.trim() === ""
+      ? []
+      : students.filter((student) =>
+          String(student.student_number)
+            .toLowerCase()
+            .includes(
+              studentSearch
+                .trim()
+                .toLowerCase()
+            )
+        );
+
+  // =====================================================
+  // SELECT SEARCH RESULT
+  // =====================================================
+
+  const selectStudentFromSearch = (student) => {
+    setStudentSearch(
+      String(student.student_number)
+    );
+
+    handleStudentChange({
+      target: {
+        value: String(student.id),
+      },
+    });
   };
-
-  // =====================================================
-  // SELECTED STUDENT
-  // =====================================================
-
-  const selectedStudentData = students.find(
-    (student) =>
-      String(student.id) ===
-      String(selectedStudent)
-  );
 
   // =====================================================
   // RENDER
@@ -430,7 +555,6 @@ function BiometricRegistration() {
 
       </nav>
 
-
       {/* ========================= */}
       {/* MAIN CONTENT */}
       {/* ========================= */}
@@ -450,7 +574,6 @@ function BiometricRegistration() {
 
         </div>
 
-
         {/* ========================= */}
         {/* MESSAGES */}
         {/* ========================= */}
@@ -467,20 +590,19 @@ function BiometricRegistration() {
           </div>
         )}
 
-
         {/* ========================= */}
-        {/* STUDENT SELECTION */}
+        {/* STUDENT SEARCH */}
         {/* ========================= */}
 
         <div className="admin-card">
 
           <h2>
-            Select Student
+            Find Student
           </h2>
 
           <p>
-            Select the student whose biometric information
-            you want to register.
+            Search for a student using their student
+            number.
           </p>
 
           {loading ? (
@@ -490,38 +612,77 @@ function BiometricRegistration() {
           ) : (
             <div className="form-group">
 
-              <label htmlFor="student">
-                Student
+              <label htmlFor="student-search">
+                Student Number
               </label>
 
-              <select
-                id="student"
-                value={selectedStudent}
-                onChange={handleStudentChange}
-              >
+              <input
+                id="student-search"
+                type="text"
+                placeholder="Enter student number"
+                value={studentSearch}
+                onChange={(e) => {
+                  setStudentSearch(
+                    e.target.value
+                  );
 
-                <option value="">
-                  -- Select Student --
-                </option>
+                  setSelectedStudent("");
+                  setFaceStatus(
+                    "Not Registered"
+                  );
+                  setFingerprintStatus(
+                    "Not Registered"
+                  );
+                  setMessage("");
+                  setError("");
+                }}
+              />
 
-                {students.map((student) => (
-                  <option
-                    key={student.id}
-                    value={student.id}
-                  >
-                    {student.student_number} -{" "}
+            </div>
+          )}
+
+          {/* ========================= */}
+          {/* SEARCH RESULTS */}
+          {/* ========================= */}
+
+          {studentSearch.trim() !== "" && (
+            <div className="student-search-results">
+
+              {searchResults.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  className="student-result"
+                  onClick={() =>
+                    selectStudentFromSearch(
+                      student
+                    )
+                  }
+                >
+
+                  <strong>
+                    {student.student_number}
+                  </strong>
+
+                  <span>
                     {student.first_name}{" "}
                     {student.last_name}
-                  </option>
-                ))}
+                  </span>
 
-              </select>
+                </button>
+              ))}
+
+              {searchResults.length === 0 && (
+                <p>
+                  No student found with that
+                  student number.
+                </p>
+              )}
 
             </div>
           )}
 
         </div>
-
 
         {/* ========================= */}
         {/* SELECTED STUDENT */}
@@ -572,7 +733,6 @@ function BiometricRegistration() {
 
         )}
 
-
         {/* ========================= */}
         {/* BIOMETRIC OPTIONS */}
         {/* ========================= */}
@@ -580,7 +740,6 @@ function BiometricRegistration() {
         {selectedStudent && (
 
           <div className="admin-grid">
-
 
             {/* ===================== */}
             {/* FACE */}
@@ -597,8 +756,8 @@ function BiometricRegistration() {
               </h2>
 
               <p>
-                Capture the student's facial information
-                using the camera.
+                Capture the student's facial
+                information using the camera.
               </p>
 
               <div className="biometric-status">
@@ -665,7 +824,6 @@ function BiometricRegistration() {
 
             </div>
 
-
             {/* ===================== */}
             {/* FINGERPRINT */}
             {/* ===================== */}
@@ -681,8 +839,9 @@ function BiometricRegistration() {
               </h2>
 
               <p>
-                Register the student's fingerprint using
-                the device's secure biometric authentication.
+                Register the student's phone
+                biometric using secure WebAuthn
+                authentication.
               </p>
 
               <div className="biometric-status">
@@ -699,7 +858,9 @@ function BiometricRegistration() {
 
               <button
                 className="dashboard-button"
-                onClick={handleFingerprintRegistration}
+                onClick={
+                  handleFingerprintRegistration
+                }
                 disabled={
                   faceStatus !== "Registered"
                 }
@@ -709,7 +870,8 @@ function BiometricRegistration() {
 
               {faceStatus !== "Registered" && (
                 <small>
-                  Face registration is required first.
+                  Face registration is required
+                  first.
                 </small>
               )}
 
@@ -718,7 +880,6 @@ function BiometricRegistration() {
           </div>
 
         )}
-
 
         {/* ========================= */}
         {/* INFORMATION */}
@@ -731,19 +892,22 @@ function BiometricRegistration() {
           </h2>
 
           <p>
-            Registered biometric information will be used
-            to verify students when they access the laboratory.
+            Registered biometric information will
+            be used to verify students when they
+            access the laboratory.
           </p>
 
           <ul>
 
             <li>
-              Face registration uses the laboratory camera.
+              Face registration uses the
+              laboratory camera.
             </li>
 
             <li>
-              Face data is converted into a biometric
-              embedding before being stored.
+              Face data is converted into a
+              biometric embedding before being
+              stored.
             </li>
 
             <li>
@@ -752,8 +916,8 @@ function BiometricRegistration() {
             </li>
 
             <li>
-              Biometric information is associated with
-              the selected student's account.
+              Biometric information is associated
+              with the selected student's account.
             </li>
 
           </ul>
@@ -767,4 +931,3 @@ function BiometricRegistration() {
 }
 
 export default BiometricRegistration;
-
