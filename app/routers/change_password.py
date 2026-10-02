@@ -9,15 +9,25 @@ from app.models.student import Student
 from app.models.employee import Employee
 from app.models.admin import SuperAdmin
 from app.security import hash_password
+from app.email_service import send_password_reset_email
+
+
 router = APIRouter(
     prefix="/auth",
     tags=["Password Recovery"]
 )
 
 
-# Temporary password reset tokens
+# =========================================================
+# TEMPORARY PASSWORD RESET TOKEN STORAGE
+# =========================================================
+
 password_reset_tokens = {}
 
+
+# =========================================================
+# REQUEST MODELS
+# =========================================================
 
 class ForgotPasswordRequest(BaseModel):
     email: str
@@ -29,6 +39,10 @@ class ResetPasswordRequest(BaseModel):
     confirm_password: str
 
 
+# =========================================================
+# FORGOT PASSWORD
+# =========================================================
+
 @router.post("/forgot-password")
 def forgot_password(request: ForgotPasswordRequest):
 
@@ -38,47 +52,73 @@ def forgot_password(request: ForgotPasswordRequest):
 
     try:
 
-        # Search students
+        # -------------------------------------------------
+        # SEARCH STUDENTS
+        # -------------------------------------------------
+
         student = db.query(Student).filter(
             Student.email == email
         ).first()
 
         if student:
+
             user_id = student.id
             user_type = "student"
 
         else:
 
-            # Search employees
+            # ---------------------------------------------
+            # SEARCH EMPLOYEES
+            # ---------------------------------------------
+
             employee = db.query(Employee).filter(
                 Employee.email == email
             ).first()
 
             if employee:
+
                 user_id = employee.id
                 user_type = "employee"
 
             else:
 
-                # Search Super Admin
+                # -----------------------------------------
+                # SEARCH SUPER ADMIN
+                # -----------------------------------------
+
                 admin = db.query(SuperAdmin).filter(
                     SuperAdmin.email == email
                 ).first()
 
                 if admin:
+
                     user_id = admin.id
                     user_type = "super_admin"
 
                 else:
-                    # Do not reveal whether an email exists
+
+                    # -------------------------------------
+                    # DO NOT REVEAL WHETHER EMAIL EXISTS
+                    # -------------------------------------
+
                     return {
-                        "message": "If the email exists, a password reset link has been sent."
+                        "message": (
+                            "If the email exists, a password reset "
+                            "link has been sent."
+                        )
                     }
 
-        # Generate secure token
+
+        # -------------------------------------------------
+        # GENERATE SECURE RESET TOKEN
+        # -------------------------------------------------
+
         reset_token = secrets.token_urlsafe(32)
 
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+        expires_at = (
+            datetime.now(timezone.utc)
+            + timedelta(minutes=30)
+        )
 
         password_reset_tokens[reset_token] = {
             "user_id": user_id,
@@ -87,52 +127,87 @@ def forgot_password(request: ForgotPasswordRequest):
             "expires_at": expires_at
         }
 
-        # Reset link
+
+        # -------------------------------------------------
+        # CREATE RESET LINK
+        # -------------------------------------------------
+
         reset_link = (
-            f"http://localhost:5173/reset-password"
+            "http://localhost:5173/reset-password"
             f"?token={reset_token}"
         )
 
-        # TEMPORARY:
-        # Print the link in the backend terminal.
-        #
-        # We will connect this to your existing email.py
-        # after confirming its email function.
-        print()
-        print("========================================")
-        print("PASSWORD RESET LINK")
-        print(reset_link)
-        print("========================================")
-        print()
+
+        # -------------------------------------------------
+        # SEND PASSWORD RESET EMAIL
+        # -------------------------------------------------
+
+        send_password_reset_email(
+            email,
+            reset_link
+        )
+
 
         return {
-            "message": "If the email exists, a password reset link has been sent."
+            "message": (
+                "If the email exists, a password reset "
+                "link has been sent."
+            )
         }
 
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to send password reset email: {str(e)}"
+        )
+
+
     finally:
+
         db.close()
 
+
+# =========================================================
+# RESET PASSWORD
+# =========================================================
 
 @router.post("/reset-password")
 def reset_password(request: ResetPasswordRequest):
 
+    # -----------------------------------------------------
+    # CHECK PASSWORDS MATCH
+    # -----------------------------------------------------
+
     if request.new_password != request.confirm_password:
+
         raise HTTPException(
             status_code=400,
             detail="Passwords do not match."
         )
+
+
+    # -----------------------------------------------------
+    # FIND RESET TOKEN
+    # -----------------------------------------------------
 
     reset_data = password_reset_tokens.get(
         request.reset_token
     )
 
     if not reset_data:
+
         raise HTTPException(
             status_code=403,
             detail="Invalid or expired password reset link."
         )
 
-    # Check expiry
+
+    # -----------------------------------------------------
+    # CHECK TOKEN EXPIRATION
+    # -----------------------------------------------------
+
     if datetime.now(timezone.utc) > reset_data["expires_at"]:
 
         del password_reset_tokens[
@@ -144,13 +219,23 @@ def reset_password(request: ResetPasswordRequest):
             detail="Password reset link has expired."
         )
 
+
+    # -----------------------------------------------------
+    # HASH NEW PASSWORD
+    # -----------------------------------------------------
+
     new_password_hash = hash_password(
         request.new_password
     )
 
+
     db: Session = SessionLocal()
 
     try:
+
+        # -------------------------------------------------
+        # FIND USER
+        # -------------------------------------------------
 
         if reset_data["user_type"] == "student":
 
@@ -170,29 +255,49 @@ def reset_password(request: ResetPasswordRequest):
                 SuperAdmin.id == reset_data["user_id"]
             ).first()
 
+
+        # -------------------------------------------------
+        # CHECK USER EXISTS
+        # -------------------------------------------------
+
         if not user:
+
             raise HTTPException(
                 status_code=404,
                 detail="User not found."
             )
 
+
+        # -------------------------------------------------
+        # UPDATE PASSWORD
+        # -------------------------------------------------
+
         user.password_hash = new_password_hash
 
         db.commit()
 
-        # Make the reset link single-use
+
+        # -------------------------------------------------
+        # MAKE TOKEN SINGLE-USE
+        # -------------------------------------------------
+
         del password_reset_tokens[
             request.reset_token
         ]
+
 
         return {
             "message": "Password reset successfully."
         }
 
+
     except HTTPException:
+
         raise
 
+
     except Exception:
+
         db.rollback()
 
         raise HTTPException(
@@ -200,5 +305,7 @@ def reset_password(request: ResetPasswordRequest):
             detail="Failed to reset password."
         )
 
+
     finally:
+
         db.close()
