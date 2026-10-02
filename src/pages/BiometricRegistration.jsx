@@ -217,14 +217,7 @@ function BiometricRegistration() {
         });
 
       streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-
-        await videoRef.current.play();
-      }
-
-      setCameraActive(true);
+         setCameraActive(true);
 
       setMessage(
         "Camera is ready. Position the student's face in the frame."
@@ -251,6 +244,17 @@ function BiometricRegistration() {
       }
     }
   };
+  useEffect(() => {
+  if (cameraActive && videoRef.current && streamRef.current) {
+    videoRef.current.srcObject = streamRef.current;
+
+    videoRef.current
+      .play()
+      .catch((err) => {
+        console.error("Video playback error:", err);
+      });
+  }
+}, [cameraActive]);
 
   // =====================================================
   // STOP CAMERA
