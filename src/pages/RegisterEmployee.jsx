@@ -49,7 +49,7 @@ function RegisterEmployee() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/admin/employees/register",
+        "https://labguard-dklp.onrender.com/admin/employees/register",
         {
           employee_number: formData.employee_number,
           first_name: formData.first_name,
@@ -241,4 +241,5 @@ function RegisterEmployee() {
 }
 
 export default RegisterEmployee;
+
 

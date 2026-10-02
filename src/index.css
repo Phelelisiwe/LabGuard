@@ -4159,3 +4159,424 @@ html {
     border-radius: 14px;
   }
 }
+
+/* =========================================================
+   LABGUARD LANDING PAGE FIXES
+========================================================= */
+
+.landing-page {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.landing-page button {
+  font-family: Arial, Helvetica, sans-serif;
+  cursor: pointer;
+}
+
+/* Navigation buttons */
+.landing-page .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.landing-page .nav-links button {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid transparent;
+  padding: 11px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.landing-page .nav-links button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffd44d;
+}
+
+.landing-page .nav-links .login-nav-button {
+  background: #f2b705;
+  color: #071a3d;
+  border: 1px solid #f2b705;
+  padding: 11px 24px;
+}
+
+.landing-page .nav-links .login-nav-button:hover {
+  background: #ffd44d;
+  color: #071a3d;
+}
+
+/* Hero text */
+.landing-page .hero-content p {
+  max-width: 630px;
+  color: #e2e8f0;
+  font-size: 17px;
+  line-height: 1.75;
+  margin-bottom: 32px;
+}
+
+/* Hero buttons */
+.landing-page .hero-buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.landing-page .primary-button,
+.landing-page .secondary-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+  padding: 13px 24px;
+  border-radius: 7px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+/* Get Started */
+.landing-page .primary-button {
+  background: #f2b705;
+  color: #071a3d;
+  border: 2px solid #f2b705;
+}
+
+.landing-page .primary-button:hover {
+  background: #ffd44d;
+  border-color: #ffd44d;
+  transform: translateY(-2px);
+}
+
+/* Learn More: black with clear white text */
+.landing-page .secondary-button {
+  background: #000000;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+}
+
+.landing-page .secondary-button:hover {
+  background: #252525;
+  color: #ffffff;
+  border-color: #ffd44d;
+  transform: translateY(-2px);
+}
+
+/* Actual hero card names used by LandingPage.jsx */
+.landing-page .hero-card {
+  position: relative;
+  z-index: 2;
+  flex: 0 1 410px;
+  width: 100%;
+  max-width: 410px;
+  min-width: 0;
+  padding: 25px;
+  box-sizing: border-box;
+  color: #ffffff;
+  background: rgba(7, 26, 61, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 18px;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.3);
+}
+
+.landing-page .kiosk-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.landing-page .kiosk-screen {
+  padding-top: 22px;
+}
+
+.landing-page .kiosk-screen h2 {
+  color: #ffffff;
+  font-size: 23px;
+  margin: 15px 0 10px;
+}
+
+.landing-page .kiosk-screen p {
+  color: #dce6f2;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.landing-page .shield {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: #f2b705;
+  color: #071a3d;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.landing-page .verification-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+}
+
+.landing-page .verification-step > span {
+  color: #6ee49a;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.landing-page .verification-step strong,
+.landing-page .verification-step small {
+  display: block;
+}
+
+.landing-page .verification-step strong {
+  color: #ffffff;
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.landing-page .verification-step small {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.landing-page .access-granted {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 7px;
+  background: #14532d;
+  color: #bbf7d0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+/* Information panels */
+.landing-page .information-area {
+  padding: 0 6% 45px;
+  background: #f5f7fa;
+}
+
+.landing-page .information-panel {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 42px;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #172033;
+  border: 1px solid #e0e6ef;
+  border-radius: 14px;
+  box-shadow: 0 12px 35px rgba(7, 26, 61, 0.09);
+  animation: labguard-panel-in 0.2s ease-out;
+}
+
+.landing-page .information-panel h2 {
+  color: #071a3d;
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.3;
+  margin: 12px 0 16px;
+}
+
+.landing-page .information-panel p {
+  color: #4b5563;
+  line-height: 1.75;
+}
+
+.landing-page .information-label {
+  color: #8a6500;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.landing-page .close-information {
+  position: absolute;
+  top: 15px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  background: #071a3d;
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  font-size: 25px;
+}
+
+.landing-page .close-information:hover {
+  background: #263c60;
+}
+
+.landing-page .information-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.landing-page .info-card {
+  padding: 22px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.landing-page .info-card h3 {
+  color: #071a3d;
+  font-size: 17px;
+}
+
+.landing-page .info-card p {
+  font-size: 14px;
+}
+
+.landing-page .info-icon {
+  font-size: 25px;
+}
+
+.landing-page .process-container,
+.landing-page .contact-information {
+  margin-top: 25px;
+}
+
+.landing-page .process-step,
+.landing-page .contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.landing-page .step-number,
+.landing-page .contact-icon {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 9px;
+  background: #071a3d;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.landing-page .process-step h3,
+.landing-page .contact-item h4 {
+  margin: 0 0 7px;
+  color: #071a3d;
+}
+
+.landing-page .process-step p,
+.landing-page .contact-item p {
+  margin: 0;
+}
+
+/* Small screens */
+@media (max-width: 850px) {
+  .landing-page .navbar {
+    height: auto;
+    min-height: 76px;
+    padding: 16px 20px;
+    align-items: flex-start;
+    gap: 15px;
+    flex-direction: column;
+  }
+
+  .landing-page .nav-links {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .landing-page .nav-links button {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .landing-page .hero {
+    min-height: auto;
+    padding: 55px 24px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 35px;
+  }
+
+  .landing-page .hero-card {
+    flex: none;
+    align-self: center;
+    max-width: 480px;
+  }
+
+  .landing-page .information-area {
+    padding: 0 20px 30px;
+  }
+
+  .landing-page .information-panel {
+    padding: 35px 22px;
+  }
+
+  .landing-page .information-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 550px) {
+  .landing-page .nav-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-page .nav-links button {
+    width: 100%;
+  }
+
+  .landing-page .nav-links .login-nav-button {
+    min-width: 0;
+  }
+
+  .landing-page .hero-buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .landing-page .primary-button,
+  .landing-page .secondary-button {
+    width: 100%;
+  }
+
+  .landing-page .information-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes labguard-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

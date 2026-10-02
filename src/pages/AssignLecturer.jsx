@@ -35,11 +35,11 @@ function AssignLecturer() {
 
       const [modulesResponse, employeesResponse] = await Promise.all([
         axios.get(
-          "http://127.0.0.1:8000/admin/modules",
+          "https://labguard-dklp.onrender.com/admin/modules",
           config
         ),
         axios.get(
-          "http://127.0.0.1:8000/admin/employees",
+          "https://labguard-dklp.onrender.com/admin/employees",
           config
         ),
       ]);
@@ -88,7 +88,7 @@ function AssignLecturer() {
 
     try {
       const response = await axios.put(
-        `http://127.0.0.1:8000/admin/modules/${selectedModule}/assign-lecturer`,
+        `https://labguard-dklp.onrender.com/admin/modules/${selectedModule}/assign-lecturer`,
         null,
         {
           params: {
@@ -290,4 +290,5 @@ function AssignLecturer() {
 }
 
 export default AssignLecturer;
+
 

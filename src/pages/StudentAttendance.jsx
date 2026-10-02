@@ -18,7 +18,7 @@ function StudentAttendance() {
   const fetchAttendance = async () => {
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/student/attendance",
+        "https://labguard-dklp.onrender.com/student/attendance",
         {
           headers: {
             Authorization: `Bearer ${token}`,

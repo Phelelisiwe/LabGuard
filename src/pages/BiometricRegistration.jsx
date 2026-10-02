@@ -49,7 +49,7 @@ function BiometricRegistration() {
       setError("");
 
       const response = await axios.get(
-        "http://127.0.0.1:8000/admin/students",
+        "https://labguard-dklp.onrender.com/admin/students",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -139,7 +139,7 @@ function BiometricRegistration() {
 
     try {
       const response = await axios.get(
-        `http://127.0.0.1:8000/biometric/students/${studentId}`,
+        `https://labguard-dklp.onrender.com/biometric/students/${studentId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -325,7 +325,7 @@ function BiometricRegistration() {
       );
 
       const response = await axios.post(
-        `http://127.0.0.1:8000/biometric/students/${selectedStudent}/face`,
+        `https://labguard-dklp.onrender.com/biometric/students/${selectedStudent}/face`,
         {
           face_embedding: faceEmbedding,
         },
@@ -401,7 +401,7 @@ function BiometricRegistration() {
     // --------------------------------------------------
 
     const optionsResponse = await axios.get(
-      `http://127.0.0.1:8000/biometric/students/${selectedStudent}/fingerprint/options`,
+      `https://labguard-dklp.onrender.com/biometric/students/${selectedStudent}/fingerprint/options`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -434,7 +434,7 @@ function BiometricRegistration() {
 
     const verificationResponse =
       await axios.post(
-        `http://127.0.0.1:8000/biometric/students/${selectedStudent}/fingerprint/verify`,
+        `https://labguard-dklp.onrender.com/biometric/students/${selectedStudent}/fingerprint/verify`,
         registrationResponse,
         {
           headers: {

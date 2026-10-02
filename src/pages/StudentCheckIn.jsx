@@ -23,7 +23,7 @@ function StudentCheckIn() {
   const fetchModules = async () => {
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/student/modules",
+        "https://labguard-dklp.onrender.com/student/modules",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -41,7 +41,7 @@ function StudentCheckIn() {
   const fetchAttendance = async () => {
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/student/attendance",
+        "https://labguard-dklp.onrender.com/student/attendance",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -68,7 +68,7 @@ function StudentCheckIn() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/attendance/check-in",
+        "https://labguard-dklp.onrender.com/attendance/check-in",
         {
           module_id: Number(selectedModule),
         },
@@ -104,7 +104,7 @@ function StudentCheckIn() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/attendance/check-out",
+        "https://labguard-dklp.onrender.com/attendance/check-out",
         {
           module_id: Number(selectedModule),
         },

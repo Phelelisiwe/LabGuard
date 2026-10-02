@@ -29,21 +29,21 @@ function StudentModules() {
       setLoading(true);
 
       const studentResponse = await axios.get(
-        "http://127.0.0.1:8000/student/me",
+        "https://labguard-dklp.onrender.com/student/me",
         config
       );
 
       setStudent(studentResponse.data);
 
       const modulesResponse = await axios.get(
-        "http://127.0.0.1:8000/student/modules",
+        "https://labguard-dklp.onrender.com/student/modules",
         config
       );
 
       setAvailableModules(modulesResponse.data);
 
       const selectedResponse = await axios.get(
-        "http://127.0.0.1:8000/student-modules/",
+        "https://labguard-dklp.onrender.com/student-modules/",
         config
       );
 
@@ -79,7 +79,7 @@ function StudentModules() {
       setError("");
 
       await axios.post(
-        "http://127.0.0.1:8000/student-modules/assign",
+        "https://labguard-dklp.onrender.com/student-modules/assign",
         null,
         {
           ...config,
@@ -92,7 +92,7 @@ function StudentModules() {
       setMessage("Module selected.");
 
       const response = await axios.get(
-        "http://127.0.0.1:8000/student-modules/",
+        "https://labguard-dklp.onrender.com/student-modules/",
         config
       );
 

@@ -49,7 +49,7 @@ function RegisterStudent() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/admin/students/register",
+        "https://labguard-dklp.onrender.com/admin/students/register",
         {
           student_number: formData.student_number,
           first_name: formData.first_name,

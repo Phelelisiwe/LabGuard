@@ -36,7 +36,7 @@ function ResetPassword() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/auth/reset-password",
+        "https://labguard-dklp.onrender.com/auth/reset-password",
         {
           reset_token: token,
           new_password: newPassword,
@@ -175,4 +175,5 @@ function ResetPassword() {
 }
 
 export default ResetPassword;
+
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://labguard-dklp.onrender.com";
 
 function OTPVerification() {
   const navigate = useNavigate();

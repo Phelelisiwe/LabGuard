@@ -20,7 +20,7 @@ function ForgotPassword() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/auth/forgot-password",
+        "https://labguard-dklp.onrender.com/auth/forgot-password",
         {
           email: email.trim(),
         }
@@ -142,4 +142,5 @@ function ForgotPassword() {
 }
 
 export default ForgotPassword;
+
 
