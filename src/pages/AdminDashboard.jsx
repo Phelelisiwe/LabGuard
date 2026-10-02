@@ -164,7 +164,7 @@ function AdminDashboard() {
             <button
               className="dashboard-button"
               onClick={() =>
-                navigate("/admin/biometric-registration")
+                navigate("/admin/biometric")
               }
             >
               Register Biometrics
