@@ -442,7 +442,7 @@ function LandingPage() {
             </span>
 
             <h2>
-              Contact LabGuard
+              Contact LabGuard__Phelelisiwe Zulu Developer
             </h2>
 
             <p>
@@ -462,7 +462,7 @@ function LandingPage() {
                 <div>
                   <h4>Email</h4>
                   <p>
-                    YOUR-EMAIL@example.com
+                    stotodubai@gmail.com
                   </p>
                 </div>
 

@@ -10,7 +10,7 @@ function BiometricRegistration() {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
-
+  const [selectedStudentData, setSelectedStudentData] = useState(null);
   const [faceStatus, setFaceStatus] = useState("Not Registered");
   const [fingerprintStatus, setFingerprintStatus] =
     useState("Not Registered");
@@ -121,7 +121,7 @@ function BiometricRegistration() {
   // SELECT STUDENT
   // =====================================================
 
-  const handleStudentChange = async (e) => {
+ const handleStudentChange = async (e) => {
     const studentId = e.target.value;
 
     setSelectedStudent(studentId);
@@ -134,8 +134,15 @@ function BiometricRegistration() {
     stopCamera();
 
     if (!studentId) {
+      setSelectedStudentData(null);
       return;
     }
+
+    const student = students.find(
+      (item) => String(item.id) === String(studentId)
+    );
+
+    setSelectedStudentData(student || null);
 
     try {
       const response = await axios.get(
