@@ -10,8 +10,8 @@ function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-
+const [showPassword, setShowPassword] = useState(false);
+const [otp, setOtp] = useState("");
   const [showOtp, setShowOtp] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -249,22 +249,36 @@ function LoginPage() {
 
               <div className="form-group">
 
-                <label htmlFor="password">
-                  Password
-                </label>
+  <label htmlFor="password">
+    Password
+  </label>
 
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  required
-                />
+  <div className="password-input-container">
 
-              </div>
+    <input
+      id="password"
+      type={showPassword ? "text" : "password"}
+      placeholder="Enter your password"
+      value={password}
+      onChange={(e) =>
+        setPassword(e.target.value)
+      }
+      required
+    />
+
+    <button
+      type="button"
+      className="password-toggle-button"
+      onClick={() =>
+        setShowPassword(!showPassword)
+      }
+    >
+      {showPassword ? "Hide" : "Show"}
+    </button>
+
+  </div>
+
+</div>
 
               {/* Forgot Password */}
               <div className="forgot-password-container">

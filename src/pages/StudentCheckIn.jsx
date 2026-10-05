@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 function StudentCheckIn() {
   const navigate = useNavigate();
@@ -56,7 +58,11 @@ function StudentCheckIn() {
     }
   };
 
-  const handleCheckIn = async () => {
+  // =====================================================
+  // FINGERPRINT CHECK-IN
+  // =====================================================
+
+  const handleFingerprintCheckIn = async () => {
     if (!selectedModule) {
       setError("Please select a module first.");
       return;
@@ -67,11 +73,9 @@ function StudentCheckIn() {
     setError("");
 
     try {
-      const response = await axios.post(
-        "https://labguard-dklp.onrender.com/attendance/check-in",
-        {
-          module_id: Number(selectedModule),
-        },
+      // Step 1: Ask backend for WebAuthn authentication options
+      const optionsResponse = await axios.get(
+        "https://labguard-dklp.onrender.com/biometric/attendance/fingerprint/options",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -79,18 +83,76 @@ function StudentCheckIn() {
         }
       );
 
-      setMessage(response.data.message);
-      fetchAttendance();
+      const optionsJSON = optionsResponse.data;
+
+      setMessage(
+        "Follow the fingerprint or biometric prompt on your phone."
+      );
+
+      // Step 2: Phone/browser performs biometric verification
+      const authenticationResponse = await startAuthentication({
+        optionsJSON,
+      });
+
+      setMessage(
+        "Biometric verified by your device. Confirming attendance..."
+      );
+
+      // Step 3: Backend verifies the WebAuthn assertion
+      const verificationResponse = await axios.post(
+        `https://labguard-dklp.onrender.com/biometric/attendance/fingerprint/verify?module_id=${Number(
+          selectedModule
+        )}`,
+        authenticationResponse,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (verificationResponse.data.success) {
+        setMessage(
+          verificationResponse.data.message ||
+            "Fingerprint verified. Attendance recorded successfully."
+        );
+
+        await fetchAttendance();
+      } else {
+        setError(
+          verificationResponse.data.message ||
+            "Fingerprint verification failed."
+        );
+        setMessage("");
+      }
     } catch (err) {
       console.error(err);
-      setError(
-        err.response?.data?.detail ||
-          "Check-in failed."
-      );
+
+      // User cancelled the phone biometric prompt
+      if (
+        err?.name === "NotAllowedError" ||
+        err?.name === "AbortError"
+      ) {
+        setError(
+          "Biometric verification was cancelled. Attendance was not recorded."
+        );
+      } else {
+        setError(
+          err.response?.data?.detail ||
+            "Fingerprint verification failed. Attendance was not recorded."
+        );
+      }
+
+      setMessage("");
     } finally {
       setLoading(false);
     }
   };
+
+  // =====================================================
+  // CHECK-OUT
+  // =====================================================
 
   const handleCheckOut = async () => {
     if (!selectedModule) {
@@ -116,7 +178,7 @@ function StudentCheckIn() {
       );
 
       setMessage(response.data.message);
-      fetchAttendance();
+      await fetchAttendance();
     } catch (err) {
       console.error(err);
       setError(
@@ -158,7 +220,6 @@ function StudentCheckIn() {
 
       </header>
 
-
       {/* Main Content */}
       <main className="attendance-main">
 
@@ -166,15 +227,16 @@ function StudentCheckIn() {
 
           <p>STUDENT PORTAL</p>
 
-          <h2>Lab Attendance</h2>
+          <h2>
+            Lab Attendance
+          </h2>
 
           <span>
-            Record your laboratory attendance by checking in
-            and checking out of your selected module.
+            Verify your identity using a registered
+            biometric before recording attendance.
           </span>
 
         </div>
-
 
         {/* Check In Card */}
         <section className="checkin-card">
@@ -186,14 +248,17 @@ function StudentCheckIn() {
             </div>
 
             <div>
-              <h3>Lab Check-In / Check-Out</h3>
+              <h3>
+                Lab Check-In / Check-Out
+              </h3>
+
               <p>
-                Select the module you are attending.
+                Select the module you are attending
+                and verify your identity.
               </p>
             </div>
 
           </div>
-
 
           {message && (
             <div className="attendance-success">
@@ -207,53 +272,81 @@ function StudentCheckIn() {
             </div>
           )}
 
-
           <div className="attendance-form">
 
             <div className="module-field">
 
-              <label>Module</label>
+              <label>
+                Module
+              </label>
 
               <select
                 value={selectedModule}
                 onChange={(e) =>
                   setSelectedModule(e.target.value)
                 }
+                disabled={loading}
               >
+
                 <option value="">
                   Select a module
                 </option>
 
                 {modules.map((item) => (
+
                   <option
                     key={item.id || item.module_id}
                     value={item.id || item.module_id}
                   >
-                    {item.module_code} - {item.module_name}
+                    {item.module_code} -{" "}
+                    {item.module_name}
                   </option>
+
                 ))}
+
               </select>
 
             </div>
 
-
+            {/* Biometric Check-In */}
             <div className="attendance-actions">
 
               <button
                 className="checkin-button"
-                onClick={handleCheckIn}
-                disabled={loading}
+                onClick={handleFingerprintCheckIn}
+                disabled={
+                  loading || !selectedModule
+                }
               >
-                ✓ Check In
+                {loading
+                  ? "Verifying..."
+                  : "🖐 Verify Fingerprint & Check In"}
               </button>
 
               <button
                 className="checkout-button"
                 onClick={handleCheckOut}
-                disabled={loading}
+                disabled={
+                  loading || !selectedModule
+                }
               >
                 ⇥ Check Out
               </button>
+
+            </div>
+
+            <div className="biometric-checkin-info">
+
+              <p>
+                <strong>Secure biometric verification</strong>
+              </p>
+
+              <span>
+                Your phone will verify your registered
+                fingerprint using secure WebAuthn
+                authentication. LabGuard does not receive
+                or store your fingerprint image.
+              </span>
 
             </div>
 
@@ -261,17 +354,21 @@ function StudentCheckIn() {
 
         </section>
 
-
         {/* Attendance History */}
         <section className="history-card">
 
           <div className="history-header">
 
             <div>
-              <h3>My Attendance</h3>
+
+              <h3>
+                My Attendance
+              </h3>
+
               <p>
                 Your laboratory attendance records.
               </p>
+
             </div>
 
             <div className="attendance-count">
@@ -280,12 +377,12 @@ function StudentCheckIn() {
 
           </div>
 
-
           <div className="attendance-table-wrapper">
 
             <table className="attendance-table">
 
               <thead>
+
                 <tr>
                   <th>Module</th>
                   <th>Date</th>
@@ -293,6 +390,7 @@ function StudentCheckIn() {
                   <th>Time Out</th>
                   <th>Status</th>
                 </tr>
+
               </thead>
 
               <tbody>
@@ -304,11 +402,13 @@ function StudentCheckIn() {
                     <tr key={record.id}>
 
                       <td>
+
                         <strong>
                           {record.module_code ||
                             record.module_name ||
                             "Module"}
                         </strong>
+
                       </td>
 
                       <td>
@@ -332,7 +432,8 @@ function StudentCheckIn() {
                               : "status-absent"
                           }
                         >
-                          {record.status || "Present"}
+                          {record.status ||
+                            "Present"}
                         </span>
 
                       </td>
@@ -366,11 +467,17 @@ function StudentCheckIn() {
 
       </main>
 
-
       {/* Footer */}
       <footer className="attendance-footer">
-        <span>LabGuard • Laboratory Management System</span>
-        <span>Tshwane University of Technology</span>
+
+        <span>
+          LabGuard • Laboratory Management System
+        </span>
+
+        <span>
+          Tshwane University of Technology
+        </span>
+
       </footer>
 
     </div>
