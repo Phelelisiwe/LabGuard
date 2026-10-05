@@ -1,8 +1,13 @@
+
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import * as faceapi from "@vladmandic/face-api";
 import { useNavigate } from "react-router-dom";
 import { startRegistration } from "@simplewebauthn/browser";
+
+const API_URL = "https://labguard-dklp.onrender.com";
+const MODEL_URL =
+  "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
 
 function BiometricRegistration() {
   const navigate = useNavigate();
@@ -11,6 +16,7 @@ function BiometricRegistration() {
   const [selectedStudent, setSelectedStudent] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudentData, setSelectedStudentData] = useState(null);
+
   const [faceStatus, setFaceStatus] = useState("Not Registered");
   const [fingerprintStatus, setFingerprintStatus] =
     useState("Not Registered");
@@ -26,22 +32,73 @@ function BiometricRegistration() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
-  const token = localStorage.getItem("access_token");
+  /*
+   * ---------------------------------------------------------
+   * AUTHENTICATION
+   * ---------------------------------------------------------
+   */
 
-  const MODEL_URL =
-    "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+  const getAuthConfig = () => {
+    const token = localStorage.getItem("access_token");
 
-  // =====================================================
-  // LOAD STUDENTS
-  // =====================================================
+    if (!token) {
+      throw new Error("AUTHENTICATION_REQUIRED");
+    }
 
-  useEffect(() => {
-    fetchStudents();
-
-    return () => {
-      stopCamera();
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     };
-  }, []);
+  };
+
+  const handleAuthenticationError = (err) => {
+    if (
+      err.message === "AUTHENTICATION_REQUIRED" ||
+      err.response?.status === 401
+    ) {
+      localStorage.removeItem("access_token");
+
+      setError("Your session has expired. Please log in again.");
+
+      navigate("/login");
+
+      return true;
+    }
+
+    return false;
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * LOAD FACE MODELS
+   * ---------------------------------------------------------
+   */
+
+  const loadFaceModels = async () => {
+    try {
+      setFaceLoading(true);
+
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+
+      console.log("Face models loaded successfully.");
+    } catch (err) {
+      console.error("Face model loading error:", err);
+      setError("Failed to load face recognition models.");
+    } finally {
+      setFaceLoading(false);
+    }
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * FETCH STUDENTS
+   * ---------------------------------------------------------
+   */
 
   const fetchStudents = async () => {
     try {
@@ -49,222 +106,53 @@ function BiometricRegistration() {
       setError("");
 
       const response = await axios.get(
-        "https://labguard-dklp.onrender.com/admin/students",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        `${API_URL}/admin/students`,
+        getAuthConfig()
       );
 
-      setStudents(response.data);
+      setStudents(response.data || []);
     } catch (err) {
-      console.error("Failed to load students:", err);
+      console.error("Fetch students error:", err);
 
-      const detail = err.response?.data?.detail;
-
-      if (Array.isArray(detail)) {
-        setError(
-          detail.map((item) => item.msg).join(", ")
-        );
-      } else {
-        setError(
-          typeof detail === "string"
-            ? detail
-            : "Failed to load students."
-        );
+      if (handleAuthenticationError(err)) {
+        return;
       }
+
+      setError(
+        err.response?.data?.detail ||
+          "Failed to load students."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // =====================================================
-  // LOAD FACE MODELS
-  // =====================================================
+  /*
+   * ---------------------------------------------------------
+   * INITIAL LOAD
+   * ---------------------------------------------------------
+   */
 
-  const loadFaceModels = async () => {
-    try {
-      setFaceLoading(true);
-      setError("");
-
-      await faceapi.nets.tinyFaceDetector.loadFromUri(
-        MODEL_URL
-      );
-
-      await faceapi.nets.faceLandmark68Net.loadFromUri(
-        MODEL_URL
-      );
-
-      await faceapi.nets.faceRecognitionNet.loadFromUri(
-        MODEL_URL
-      );
-
-      setMessage("Face recognition models loaded.");
-    } catch (err) {
-      console.error(
-        "Failed to load face recognition models:",
-        err
-      );
-
-      setError(
-        "Unable to load face recognition models. Check your internet connection and try again."
-      );
-
-      throw err;
-    } finally {
-      setFaceLoading(false);
-    }
-  };
-
-  // =====================================================
-  // SELECT STUDENT
-  // =====================================================
-
- const handleStudentChange = async (e) => {
-    const studentId = e.target.value;
-
-    setSelectedStudent(studentId);
-    setMessage("");
-    setError("");
-
-    setFaceStatus("Not Registered");
-    setFingerprintStatus("Not Registered");
-
-    stopCamera();
-
-    if (!studentId) {
-      setSelectedStudentData(null);
-      return;
-    }
-
-    const student = students.find(
-      (item) => String(item.id) === String(studentId)
-    );
-
-    setSelectedStudentData(student || null);
-
-    try {
-      const response = await axios.get(
-        `https://labguard-dklp.onrender.com/biometric/students/${studentId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setFaceStatus(
-        response.data.face_registered
-          ? "Registered"
-          : "Not Registered"
-      );
-
-      setFingerprintStatus(
-        response.data.fingerprint_registered
-          ? "Registered"
-          : "Not Registered"
-      );
-    } catch (err) {
-      console.error(
-        "Failed to load biometric status:",
-        err
-      );
-
-      const detail = err.response?.data?.detail;
-
-      if (typeof detail === "string") {
-        setError(detail);
-      }
-    }
-  };
-
-  // =====================================================
-  // START CAMERA
-  // =====================================================
-
-  const startCamera = async () => {
-    if (!selectedStudent) {
-      setError("Please select a student first.");
-      return;
-    }
-
-    try {
-      setError("");
-      setMessage("");
-
-      await loadFaceModels();
-
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setError(
-          "Camera access is not supported by this browser."
-        );
-        return;
-      }
-
-      const stream =
-        await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: {
-              ideal: 640,
-            },
-            height: {
-              ideal: 480,
-            },
-            facingMode: "user",
-          },
-          audio: false,
-        });
-
-      streamRef.current = stream;
-         setCameraActive(true);
-
-      setMessage(
-        "Camera is ready. Position the student's face in the frame."
-      );
-    } catch (err) {
-      console.error("Camera error:", err);
-
-      if (err.name === "NotAllowedError") {
-        setError(
-          "Camera permission was denied. Please allow camera access in your browser."
-        );
-      } else if (err.name === "NotFoundError") {
-        setError(
-          "No camera was found on this device."
-        );
-      } else if (err.name === "NotReadableError") {
-        setError(
-          "The camera is already being used by another application."
-        );
-      } else {
-        setError(
-          "Unable to start the camera."
-        );
-      }
-    }
-  };
   useEffect(() => {
-  if (cameraActive && videoRef.current && streamRef.current) {
-    videoRef.current.srcObject = streamRef.current;
+    fetchStudents();
+    loadFaceModels();
 
-    videoRef.current
-      .play()
-      .catch((err) => {
-        console.error("Video playback error:", err);
-      });
-  }
-}, [cameraActive]);
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
-  // =====================================================
-  // STOP CAMERA
-  // =====================================================
+  /*
+   * ---------------------------------------------------------
+   * STOP CAMERA
+   * ---------------------------------------------------------
+   */
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current
-        .getTracks()
-        .forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
 
       streamRef.current = null;
     }
@@ -276,9 +164,134 @@ function BiometricRegistration() {
     setCameraActive(false);
   };
 
-  // =====================================================
-  // CAPTURE FACE
-  // =====================================================
+  /*
+   * ---------------------------------------------------------
+   * START CAMERA
+   * ---------------------------------------------------------
+   */
+
+  const startCamera = async () => {
+    try {
+      setError("");
+      setMessage("");
+
+      if (!selectedStudent) {
+        setError("Please select a student first.");
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("Camera access is not supported by this browser.");
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+
+        await videoRef.current.play();
+      }
+
+      setCameraActive(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+
+      if (err.name === "NotAllowedError") {
+        setError(
+          "Camera permission was denied. Please allow camera access."
+        );
+      } else if (err.name === "NotFoundError") {
+        setError("No camera was found on this device.");
+      } else {
+        setError("Unable to access the camera.");
+      }
+    }
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * STUDENT SELECTION
+   * ---------------------------------------------------------
+   */
+
+  const handleStudentChange = async (studentId) => {
+    setSelectedStudent(studentId);
+    setSelectedStudentData(null);
+
+    setFaceStatus("Not Registered");
+    setFingerprintStatus("Not Registered");
+
+    setMessage("");
+    setError("");
+
+    stopCamera();
+
+    if (!studentId) {
+      return;
+    }
+
+    const student = students.find(
+      (item) => String(item.id) === String(studentId)
+    );
+
+    setSelectedStudentData(student || null);
+
+    try {
+      const response = await axios.get(
+        `${API_URL}/biometric/students/${studentId}`,
+        getAuthConfig()
+      );
+
+      const biometric = response.data;
+
+      setFaceStatus(
+        biometric.face_registered
+          ? "Registered"
+          : "Not Registered"
+      );
+
+      setFingerprintStatus(
+        biometric.fingerprint_registered
+          ? "Registered"
+          : "Not Registered"
+      );
+    } catch (err) {
+      console.error("Biometric status error:", err);
+
+      if (handleAuthenticationError(err)) {
+        return;
+      }
+
+      /*
+       * If no biometric record exists yet, the student can still
+       * continue with registration.
+       */
+      if (err.response?.status === 404) {
+        setFaceStatus("Not Registered");
+        setFingerprintStatus("Not Registered");
+        return;
+      }
+
+      setError(
+        err.response?.data?.detail ||
+          "Failed to load biometric status."
+      );
+    }
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * FACE REGISTRATION
+   * ---------------------------------------------------------
+   */
 
   const captureFace = async () => {
     if (!selectedStudent) {
@@ -287,21 +300,21 @@ function BiometricRegistration() {
     }
 
     if (!videoRef.current) {
-      setError("Camera is not available.");
+      setError("Camera is not active.");
       return;
     }
 
     try {
       setCapturing(true);
       setError("");
-      setMessage("Detecting face...");
+      setMessage("");
 
       const detection =
         await faceapi
           .detectSingleFace(
             videoRef.current,
             new faceapi.TinyFaceDetectorOptions({
-              inputSize: 224,
+              inputSize: 320,
               scoreThreshold: 0.5,
             })
           )
@@ -310,633 +323,799 @@ function BiometricRegistration() {
 
       if (!detection) {
         setError(
-          "No face detected. Make sure the student's face is clearly visible and try again."
+          "No face detected. Please position your face clearly in front of the camera."
         );
-
-        setMessage("");
         return;
       }
 
       const descriptor = detection.descriptor;
 
-      if (!descriptor || descriptor.length !== 128) {
-        setError(
-          "Invalid face embedding generated. Please try again."
-        );
+      const faceEmbedding = Array.from(descriptor).join(",");
 
-        setMessage("");
+      if (descriptor.length !== 128) {
+        setError(
+          "Invalid face embedding. Please try again."
+        );
         return;
       }
 
-      const faceEmbedding =
-        Array.from(descriptor).join(",");
-
-      setMessage(
-        "Face detected. Registering biometric information..."
-      );
+      const authConfig = getAuthConfig();
 
       const response = await axios.post(
-        `https://labguard-dklp.onrender.com/biometric/students/${selectedStudent}/face`,
+        `${API_URL}/biometric/students/${selectedStudent}/face`,
         {
           face_embedding: faceEmbedding,
         },
         {
+          ...authConfig,
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...authConfig.headers,
             "Content-Type": "application/json",
           },
         }
       );
 
+      console.log("Face registration response:", response.data);
+
       setFaceStatus("Registered");
 
-      setMessage(
-        response.data.message ||
-          "Face registered successfully."
-      );
-
-      stopCamera();
-    } catch (err) {
-      console.error(
-        "Face registration error:",
-        err
-      );
-
-      const detail = err.response?.data?.detail;
-
-      if (Array.isArray(detail)) {
-        setError(
-          detail
-            .map((item) => item.msg)
-            .join(", ")
-        );
-      } else if (typeof detail === "string") {
-        setError(detail);
-      } else {
-        setError(
-          "Face registration failed. Please try again."
-        );
+      if (response.data.fingerprint_registered) {
+        setFingerprintStatus("Registered");
       }
 
-      setMessage("");
+      setMessage(
+        "Face registered successfully. You can now register the fingerprint."
+      );
+    } catch (err) {
+      console.error("Face registration error:", err);
+
+      if (handleAuthenticationError(err)) {
+        return;
+      }
+
+      setError(
+        err.response?.data?.detail ||
+          err.message ||
+          "Failed to register face."
+      );
     } finally {
       setCapturing(false);
     }
   };
 
-  // =====================================================
-  // FINGERPRINT
-  // =====================================================
+  /*
+   * ---------------------------------------------------------
+   * FINGERPRINT / WEBAUTHN REGISTRATION
+   * ---------------------------------------------------------
+   */
 
-  const handleFingerprintRegistration = async () => {
-  if (!selectedStudent) {
-    setError("Please select a student first.");
-    return;
-  }
+  const registerFingerprint = async () => {
+    if (!selectedStudent) {
+      setError("Please select a student first.");
+      return;
+    }
 
-  if (faceStatus !== "Registered") {
-    setError(
-      "Register the student's face before registering the fingerprint."
-    );
-    return;
-  }
+    if (faceStatus !== "Registered") {
+      setError(
+        "Please register the student's face before registering the fingerprint."
+      );
+      return;
+    }
 
-  try {
-    setError("");
-    setMessage(
-      "Preparing phone biometric registration..."
-    );
+    try {
+      setError("");
+      setMessage("");
 
-    // --------------------------------------------------
-    // 1. GET REGISTRATION OPTIONS FROM FASTAPI
-    // --------------------------------------------------
-
-    const optionsResponse = await axios.get(
-      `https://labguard-dklp.onrender.com/biometric/students/${selectedStudent}/fingerprint/options`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const optionsJSON = optionsResponse.data;
-
-    // --------------------------------------------------
-    // 2. START REAL PHONE BIOMETRIC REGISTRATION
-    // --------------------------------------------------
-
-    setMessage(
-      "Follow the biometric prompt on the phone."
-    );
-
-    const registrationResponse =
-      await startRegistration({
-        optionsJSON,
-      });
-
-    // --------------------------------------------------
-    // 3. SEND THE AUTHENTICATOR RESPONSE TO FASTAPI
-    // --------------------------------------------------
-
-    setMessage(
-      "Biometric captured. Verifying with LabGuard..."
-    );
-
-    const verificationResponse =
-      await axios.post(
-        `https://labguard-dklp.onrender.com/biometric/students/${selectedStudent}/fingerprint/verify`,
-        registrationResponse,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      console.log(
+        "Starting authenticated fingerprint registration..."
       );
 
-    // --------------------------------------------------
-    // 4. REGISTRATION SUCCESS
-    // --------------------------------------------------
+      /*
+       * STEP 1:
+       * Request WebAuthn registration options from backend.
+       */
 
-    if (verificationResponse.data.verified) {
+      const optionsResponse = await axios.get(
+        `${API_URL}/biometric/students/${selectedStudent}/fingerprint/options`,
+        getAuthConfig()
+      );
+
+      const optionsJSON = optionsResponse.data;
+
+      console.log(
+        "Fingerprint registration authenticated."
+      );
+
+      console.log(
+        "WebAuthn options received:",
+        optionsJSON
+      );
+
+      if (!optionsJSON) {
+        throw new Error(
+          "The server returned empty WebAuthn options."
+        );
+      }
+
+      /*
+       * STEP 2:
+       * Ask the browser/phone to perform biometric authentication.
+       */
+
+      console.log(
+        "Opening fingerprint/biometric prompt..."
+      );
+
+      const registrationResponse =
+        await startRegistration({
+          optionsJSON,
+        });
+
+      console.log(
+        "Fingerprint biometric prompt completed."
+      );
+
+      console.log(
+        "Registration response:",
+        registrationResponse
+      );
+
+      /*
+       * STEP 3:
+       * Send the signed WebAuthn response to backend.
+       */
+
+      const verifyAuthConfig = getAuthConfig();
+
+      const verificationResponse =
+        await axios.post(
+          `${API_URL}/biometric/students/${selectedStudent}/fingerprint/verify`,
+          registrationResponse,
+          {
+            ...verifyAuthConfig,
+            headers: {
+              ...verifyAuthConfig.headers,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+      console.log(
+        "Fingerprint verification response:",
+        verificationResponse.data
+      );
+
       setFingerprintStatus("Registered");
 
       setMessage(
-        verificationResponse.data.message ||
-          "Phone biometric registered successfully."
+        "Fingerprint registered successfully."
       );
-    } else {
-      setError(
-        "The phone biometric could not be verified."
+    } catch (err) {
+      console.error(
+        "Fingerprint registration error:",
+        err
       );
 
-      setMessage("");
-    }
+      if (handleAuthenticationError(err)) {
+        return;
+      }
 
-  } catch (err) {
-    console.error(
-      "Fingerprint registration error:",
-      err
-    );
+      /*
+       * User cancelled the phone/browser biometric prompt.
+       */
 
-    const detail =
-      err.response?.data?.detail;
+      if (err.name === "NotAllowedError") {
+        setError(
+          "Fingerprint registration was cancelled or not allowed."
+        );
+        return;
+      }
 
-    if (typeof detail === "string") {
-      setError(detail);
-    } else if (
-      err.name === "NotAllowedError"
-    ) {
-      setError(
-        "The biometric registration was cancelled or not allowed."
-      );
-    } else if (
-      err.name === "InvalidStateError"
-    ) {
-      setError(
-        "This phone may already have a passkey registered for LabGuard."
-      );
-    } else {
-      setError(
-        "Fingerprint registration failed. Please try again."
-      );
-    }
+      /*
+       * Credential already exists on the device.
+       */
 
-    setMessage("");
-  }
-};
+      if (err.name === "InvalidStateError") {
+        setError(
+          "This biometric credential may already be registered on this device."
+        );
+        return;
+      }
 
-  // =====================================================
-  // SEARCHED STUDENTS
-  // =====================================================
+      /*
+       * WebAuthn browser compatibility error.
+       */
 
-  const searchResults =
-    studentSearch.trim() === ""
-      ? []
-      : students.filter((student) =>
-          String(student.student_number)
-            .toLowerCase()
-            .includes(
-              studentSearch
-                .trim()
-                .toLowerCase()
-            )
+      if (
+        err.name === "SecurityError" ||
+        err.name === "NotSupportedError"
+      ) {
+        setError(
+          "This browser or device does not support the required biometric authentication."
+        );
+        return;
+      }
+
+      /*
+       * Backend error.
+       */
+
+      if (err.response) {
+        console.error(
+          "Backend status:",
+          err.response.status
         );
 
-  // =====================================================
-  // SELECT SEARCH RESULT
-  // =====================================================
+        console.error(
+          "Backend response:",
+          err.response.data
+        );
 
-  const selectStudentFromSearch = (student) => {
-    setStudentSearch(
-      String(student.student_number)
-    );
+        setError(
+          err.response.data?.detail ||
+            "The server rejected fingerprint registration."
+        );
 
-    handleStudentChange({
-      target: {
-        value: String(student.id),
-      },
-    });
+        return;
+      }
+
+      /*
+       * Generic WebAuthn error.
+       */
+
+      setError(
+        err.message ||
+          "Fingerprint registration failed."
+      );
+    }
   };
 
-  // =====================================================
-  // RENDER
-  // =====================================================
+  /*
+   * ---------------------------------------------------------
+   * SEARCH STUDENTS
+   * ---------------------------------------------------------
+   */
+
+  const filteredStudents = students.filter((student) => {
+    const search = studentSearch
+      .toLowerCase()
+      .trim();
+
+    if (!search) {
+      return true;
+    }
+
+    const studentNumber =
+      student.student_number?.toLowerCase() || "";
+
+    const firstName =
+      student.first_name?.toLowerCase() || "";
+
+    const lastName =
+      student.last_name?.toLowerCase() || "";
+
+    const email =
+      student.email?.toLowerCase() || "";
+
+    return (
+      studentNumber.includes(search) ||
+      firstName.includes(search) ||
+      lastName.includes(search) ||
+      email.includes(search)
+    );
+  });
+
+  /*
+   * ---------------------------------------------------------
+   * RENDER
+   * ---------------------------------------------------------
+   */
 
   return (
-    <div className="admin-page">
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#f5f7fa",
+        padding: "30px",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1100px",
+          margin: "0 auto",
+        }}
+      >
+        {/* HEADER */}
 
-      {/* ========================= */}
-      {/* NAVBAR */}
-      {/* ========================= */}
-
-      <nav className="admin-navbar">
-
-        <div className="admin-logo">
-          LabGuard
-        </div>
-
-        <button
-          className="logout-button"
-          onClick={() => navigate("/admin")}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "30px",
+          }}
         >
-          Back
-        </button>
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                color: "#041832",
+              }}
+            >
+              Biometric Registration
+            </h1>
 
-      </nav>
+            <p
+              style={{
+                marginTop: "8px",
+                color: "#666",
+              }}
+            >
+              Register face and fingerprint authentication
+              for students.
+            </p>
+          </div>
 
-      {/* ========================= */}
-      {/* MAIN CONTENT */}
-      {/* ========================= */}
-
-      <main className="admin-content">
-
-        <div className="admin-header">
-
-          <h1>
-            Biometric Registration
-          </h1>
-
-          <p>
-            Register face and fingerprint information
-            for laboratory access.
-          </p>
-
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              padding: "10px 18px",
+              border: "none",
+              borderRadius: "6px",
+              background: "#003b70",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            Back
+          </button>
         </div>
 
-        {/* ========================= */}
-        {/* MESSAGES */}
-        {/* ========================= */}
-
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+        {/* MESSAGE */}
 
         {message && (
-          <div className="success-message">
+          <div
+            style={{
+              padding: "14px",
+              marginBottom: "20px",
+              borderRadius: "6px",
+              background: "#e8f7ee",
+              color: "#176b35",
+              border: "1px solid #b9e5c8",
+            }}
+          >
             {message}
           </div>
         )}
 
-        {/* ========================= */}
-        {/* STUDENT SEARCH */}
-        {/* ========================= */}
+        {/* ERROR */}
 
-        <div className="admin-card">
-
-          <h2>
-            Find Student
-          </h2>
-
-          <p>
-            Search for a student using their student
-            number.
-          </p>
-
-          {loading ? (
-            <p>
-              Loading students...
-            </p>
-          ) : (
-            <div className="form-group">
-
-              <label htmlFor="student-search">
-                Student Number
-              </label>
-
-              <input
-                id="student-search"
-                type="text"
-                placeholder="Enter student number"
-                value={studentSearch}
-                onChange={(e) => {
-                  setStudentSearch(
-                    e.target.value
-                  );
-
-                  setSelectedStudent("");
-                  setFaceStatus(
-                    "Not Registered"
-                  );
-                  setFingerprintStatus(
-                    "Not Registered"
-                  );
-                  setMessage("");
-                  setError("");
-                }}
-              />
-
-            </div>
-          )}
-
-          {/* ========================= */}
-          {/* SEARCH RESULTS */}
-          {/* ========================= */}
-
-          {studentSearch.trim() !== "" && (
-            <div className="student-search-results">
-
-              {searchResults.map((student) => (
-                <button
-                  key={student.id}
-                  type="button"
-                  className="student-result"
-                  onClick={() =>
-                    selectStudentFromSearch(
-                      student
-                    )
-                  }
-                >
-
-                  <strong>
-                    {student.student_number}
-                  </strong>
-
-                  <span>
-                    {student.first_name}{" "}
-                    {student.last_name}
-                  </span>
-
-                </button>
-              ))}
-
-              {searchResults.length === 0 && (
-                <p>
-                  No student found with that
-                  student number.
-                </p>
-              )}
-
-            </div>
-          )}
-
-        </div>
-
-        {/* ========================= */}
-        {/* SELECTED STUDENT */}
-        {/* ========================= */}
-
-        {selectedStudentData && (
-
-          <div className="admin-card">
-
-            <h2>
-              Student Information
-            </h2>
-
-            <div className="biometric-student-info">
-
-              <p>
-                <strong>
-                  Student Number:
-                </strong>{" "}
-                {selectedStudentData.student_number}
-              </p>
-
-              <p>
-                <strong>
-                  Name:
-                </strong>{" "}
-                {selectedStudentData.first_name}{" "}
-                {selectedStudentData.last_name}
-              </p>
-
-              <p>
-                <strong>
-                  Course:
-                </strong>{" "}
-                {selectedStudentData.course}
-              </p>
-
-              <p>
-                <strong>
-                  Current Year:
-                </strong>{" "}
-                {selectedStudentData.current_year}
-              </p>
-
-            </div>
-
+        {error && (
+          <div
+            style={{
+              padding: "14px",
+              marginBottom: "20px",
+              borderRadius: "6px",
+              background: "#fdecec",
+              color: "#a12626",
+              border: "1px solid #f2b8b8",
+            }}
+          >
+            {error}
           </div>
-
         )}
 
-        {/* ========================= */}
-        {/* BIOMETRIC OPTIONS */}
-        {/* ========================= */}
+        {/* MAIN CARD */}
 
-        {selectedStudent && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "12px",
+            padding: "25px",
+            boxShadow: "0 3px 12px rgba(0,0,0,0.08)",
+          }}
+        >
+          {/* STUDENT SELECTION */}
 
-          <div className="admin-grid">
+          <h2
+            style={{
+              color: "#041832",
+              marginTop: 0,
+            }}
+          >
+            1. Select Student
+          </h2>
 
-            {/* ===================== */}
-            {/* FACE */}
-            {/* ===================== */}
+          <input
+            type="text"
+            placeholder="Search by student number, name or email..."
+            value={studentSearch}
+            onChange={(e) => {
+              setStudentSearch(e.target.value);
+              setSelectedStudent("");
+              setSelectedStudentData(null);
+              setFaceStatus("Not Registered");
+              setFingerprintStatus("Not Registered");
+              stopCamera();
+            }}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "12px",
+              marginBottom: "12px",
+              border: "1px solid #ccc",
+              borderRadius: "6px",
+              fontSize: "15px",
+            }}
+          />
 
-            <div className="admin-card biometric-card">
+          {loading ? (
+            <p>Loading students...</p>
+          ) : (
+            <select
+              value={selectedStudent}
+              onChange={(e) =>
+                handleStudentChange(e.target.value)
+              }
+              style={{
+                width: "100%",
+                padding: "12px",
+                border: "1px solid #ccc",
+                borderRadius: "6px",
+                fontSize: "15px",
+                marginBottom: "20px",
+              }}
+            >
+              <option value="">
+                -- Select Student --
+              </option>
 
-              <div className="admin-card-icon">
-                👤
+              {filteredStudents.map((student) => (
+                <option
+                  key={student.id}
+                  value={student.id}
+                >
+                  {student.student_number} -{" "}
+                  {student.first_name}{" "}
+                  {student.last_name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* SELECTED STUDENT */}
+
+          {selectedStudentData && (
+            <div
+              style={{
+                padding: "15px",
+                background: "#f5f7fa",
+                borderRadius: "8px",
+                marginBottom: "25px",
+              }}
+            >
+              <strong>
+                {selectedStudentData.first_name}{" "}
+                {selectedStudentData.last_name}
+              </strong>
+
+              <div
+                style={{
+                  marginTop: "5px",
+                  color: "#666",
+                }}
+              >
+                Student Number:{" "}
+                {selectedStudentData.student_number}
               </div>
 
-              <h2>
-                Face Registration
+              <div
+                style={{
+                  color: "#666",
+                }}
+              >
+                Email:{" "}
+                {selectedStudentData.email}
+              </div>
+            </div>
+          )}
+
+          {/* BIOMETRIC STATUS */}
+
+          {selectedStudent && (
+            <>
+              <h2
+                style={{
+                  color: "#041832",
+                }}
+              >
+                2. Biometric Status
               </h2>
 
-              <p>
-                Capture the student's facial
-                information using the camera.
-              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: "15px",
+                  marginBottom: "30px",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "18px",
+                    borderRadius: "8px",
+                    background:
+                      faceStatus === "Registered"
+                        ? "#e8f7ee"
+                        : "#fff4e5",
+                    border:
+                      faceStatus === "Registered"
+                        ? "1px solid #b9e5c8"
+                        : "1px solid #f0d19b",
+                  }}
+                >
+                  <strong>Face</strong>
 
-              <div className="biometric-status">
+                  <div
+                    style={{
+                      marginTop: "8px",
+                    }}
+                  >
+                    {faceStatus}
+                  </div>
+                </div>
 
-                <span>
-                  Status:
-                </span>
+                <div
+                  style={{
+                    padding: "18px",
+                    borderRadius: "8px",
+                    background:
+                      fingerprintStatus ===
+                      "Registered"
+                        ? "#e8f7ee"
+                        : "#fff4e5",
+                    border:
+                      fingerprintStatus ===
+                      "Registered"
+                        ? "1px solid #b9e5c8"
+                        : "1px solid #f0d19b",
+                  }}
+                >
+                  <strong>Fingerprint</strong>
 
-                <strong>
-                  {faceStatus}
-                </strong>
-
+                  <div
+                    style={{
+                      marginTop: "8px",
+                    }}
+                  >
+                    {fingerprintStatus}
+                  </div>
+                </div>
               </div>
 
-              {!cameraActive ? (
+              {/* FACE */}
 
-                <button
-                  className="dashboard-button"
-                  onClick={startCamera}
-                  disabled={faceLoading}
+              <h2
+                style={{
+                  color: "#041832",
+                }}
+              >
+                3. Register Face
+              </h2>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  marginBottom: "35px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: "600px",
+                    background: "#111",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
                 >
-                  {faceLoading
-                    ? "Loading..."
-                    : "📷 Register Face"}
-                </button>
-
-              ) : (
-
-                <div className="biometric-camera">
-
                   <video
                     ref={videoRef}
                     autoPlay
-                    playsInline
                     muted
-                    className="biometric-video"
+                    playsInline
+                    style={{
+                      width: "100%",
+                      display: "block",
+                      minHeight: "300px",
+                      objectFit: "cover",
+                    }}
                   />
 
-                  <div className="camera-actions">
-
-                    <button
-                      className="dashboard-button"
-                      onClick={captureFace}
-                      disabled={capturing}
+                  {!cameraActive && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        background:
+                          "rgba(0,0,0,0.55)",
+                      }}
                     >
-                      {capturing
-                        ? "Detecting..."
-                        : "📸 Capture Face"}
-                    </button>
-
-                    <button
-                      className="back-button"
-                      onClick={stopCamera}
-                      disabled={capturing}
-                    >
-                      Cancel
-                    </button>
-
-                  </div>
-
+                      Camera inactive
+                    </div>
+                  )}
                 </div>
 
-              )}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    marginTop: "15px",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                  }}
+                >
+                  {!cameraActive ? (
+                    <button
+                      onClick={startCamera}
+                      disabled={faceLoading}
+                      style={{
+                        padding: "12px 20px",
+                        border: "none",
+                        borderRadius: "6px",
+                        background: "#003b70",
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Start Camera
+                    </button>
+                  ) : (
+                    <button
+                      onClick={stopCamera}
+                      style={{
+                        padding: "12px 20px",
+                        border: "none",
+                        borderRadius: "6px",
+                        background: "#777",
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Stop Camera
+                    </button>
+                  )}
 
-            </div>
+                  <button
+                    onClick={captureFace}
+                    disabled={
+                      !cameraActive ||
+                      capturing ||
+                      faceLoading
+                    }
+                    style={{
+                      padding: "12px 20px",
+                      border: "none",
+                      borderRadius: "6px",
+                      background:
+                        !cameraActive ||
+                        capturing ||
+                        faceLoading
+                          ? "#aaa"
+                          : "#f2b705",
+                      color: "#041832",
+                      cursor:
+                        !cameraActive ||
+                        capturing ||
+                        faceLoading
+                          ? "not-allowed"
+                          : "pointer",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {capturing
+                      ? "Capturing..."
+                      : "Register Face"}
+                  </button>
+                </div>
 
-            {/* ===================== */}
-            {/* FINGERPRINT */}
-            {/* ===================== */}
-
-            <div className="admin-card biometric-card">
-
-              <div className="admin-card-icon">
-                🖐️
+                {faceLoading && (
+                  <p
+                    style={{
+                      color: "#666",
+                      marginTop: "10px",
+                    }}
+                  >
+                    Loading face recognition models...
+                  </p>
+                )}
               </div>
 
-              <h2>
-                Fingerprint Registration
+              {/* FINGERPRINT */}
+
+              <h2
+                style={{
+                  color: "#041832",
+                }}
+              >
+                4. Register Fingerprint
               </h2>
 
-              <p>
-                Register the student's phone
-                biometric using secure WebAuthn
-                authentication.
-              </p>
-
-              <div className="biometric-status">
-
-                <span>
-                  Status:
-                </span>
-
-                <strong>
-                  {fingerprintStatus}
-                </strong>
-
-              </div>
-
-              <button
-                className="dashboard-button"
-                onClick={
-                  handleFingerprintRegistration
-                }
-                disabled={
-                  faceStatus !== "Registered"
-                }
+              <div
+                style={{
+                  padding: "25px",
+                  background: "#f5f7fa",
+                  borderRadius: "10px",
+                  textAlign: "center",
+                }}
               >
-                🖐️ Register Fingerprint
-              </button>
+                <p
+                  style={{
+                    color: "#555",
+                    lineHeight: "1.6",
+                  }}
+                >
+                  The fingerprint is registered using
+                  your device's built-in biometric
+                  authentication, such as fingerprint or
+                  another supported platform authenticator.
+                </p>
 
-              {faceStatus !== "Registered" && (
-                <small>
-                  Face registration is required
-                  first.
-                </small>
-              )}
+                <button
+                  onClick={registerFingerprint}
+                  disabled={
+                    faceStatus !== "Registered" ||
+                    fingerprintStatus === "Registered"
+                  }
+                  style={{
+                    padding: "13px 24px",
+                    border: "none",
+                    borderRadius: "6px",
+                    background:
+                      faceStatus !== "Registered" ||
+                      fingerprintStatus === "Registered"
+                        ? "#aaa"
+                        : "#003b70",
+                    color: "#fff",
+                    cursor:
+                      faceStatus !== "Registered" ||
+                      fingerprintStatus === "Registered"
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: "700",
+                    fontSize: "15px",
+                  }}
+                >
+                  {fingerprintStatus === "Registered"
+                    ? "Fingerprint Registered"
+                    : "Register Fingerprint"}
+                </button>
 
-            </div>
-
-          </div>
-
-        )}
-
-        {/* ========================= */}
-        {/* INFORMATION */}
-        {/* ========================= */}
-
-        <div className="admin-card biometric-information">
-
-          <h2>
-            Biometric Access
-          </h2>
-
-          <p>
-            Registered biometric information will
-            be used to verify students when they
-            access the laboratory.
-          </p>
-
-          <ul>
-
-            <li>
-              Face registration uses the
-              laboratory camera.
-            </li>
-
-            <li>
-              Face data is converted into a
-              biometric embedding before being
-              stored.
-            </li>
-
-            <li>
-              Fingerprint registration uses secure
-              WebAuthn authentication.
-            </li>
-
-            <li>
-              Biometric information is associated
-              with the selected student's account.
-            </li>
-
-          </ul>
-
+                {faceStatus !== "Registered" && (
+                  <p
+                    style={{
+                      marginTop: "12px",
+                      color: "#a12626",
+                    }}
+                  >
+                    Register the student's face first.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </div>
-
-      </main>
-
+      </div>
     </div>
   );
 }
