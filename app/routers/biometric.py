@@ -1,10 +1,11 @@
 from datetime import datetime
-
 import base64
+import json
 import os
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -45,27 +46,105 @@ router = APIRouter(
 
 RP_ID = os.getenv(
     "WEBAUTHN_RP_ID",
-    "localhost"
+    "localhost",
 )
 
 RP_NAME = os.getenv(
     "WEBAUTHN_RP_NAME",
-    "LabGuard"
+    "LabGuard",
 )
 
 EXPECTED_ORIGIN = os.getenv(
     "WEBAUTHN_ORIGIN",
-    "https://labguard-1-pwhe.onrender.com"
+    "https://labguard-1-pwhe.onrender.com",
 )
 
 
 # =========================================================
 # TEMPORARY CHALLENGE STORAGE
 # =========================================================
+#
+# These dictionaries are suitable for the current project
+# demonstration. For a production system, challenges should
+# be stored in a shared server-side store such as Redis or
+# the database.
+#
 
 registration_challenges = {}
-
 authentication_challenges = {}
+
+
+# =========================================================
+# HELPER FUNCTIONS
+# =========================================================
+
+def options_json_response(options):
+    """
+    Convert py_webauthn options into a real JSON object.
+
+    options_to_json() returns a JSON string. FastAPI should
+    return the decoded JSON object so the frontend receives
+    the expected WebAuthn options structure.
+    """
+
+    try:
+        options_json = options_to_json(options)
+
+        if isinstance(options_json, str):
+            options_data = json.loads(options_json)
+        else:
+            options_data = options_json
+
+        if not isinstance(options_data, dict):
+            raise ValueError(
+                "WebAuthn options did not produce a JSON object."
+            )
+
+        return JSONResponse(
+            content=options_data
+        )
+
+    except Exception as exc:
+        print(
+            "Failed to serialize WebAuthn options:",
+            repr(exc)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "The server could not generate valid "
+                "WebAuthn options."
+            ),
+        )
+
+
+def decode_base64url(value: str, field_name: str) -> bytes:
+    """
+    Decode a stored Base64URL value.
+    """
+
+    try:
+        padding = "=" * (
+            (4 - len(value) % 4) % 4
+        )
+
+        return base64.urlsafe_b64decode(
+            value + padding
+        )
+
+    except Exception as exc:
+        print(
+            f"Failed to decode {field_name}:",
+            repr(exc)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Stored {field_name} is invalid."
+            ),
+        )
 
 
 # =========================================================
@@ -89,10 +168,12 @@ def register_face(
     if not student:
         raise HTTPException(
             status_code=404,
-            detail="Student not found",
+            detail="Student not found.",
         )
 
-    biometric = db.query(StudentBiometric).filter(
+    biometric = db.query(
+        StudentBiometric
+    ).filter(
         StudentBiometric.student_id == student_id
     ).first()
 
@@ -108,11 +189,8 @@ def register_face(
     biometric.face_embedding = data.face_embedding
 
     if biometric.fingerprint_credential_id:
-
         biometric.biometric_status = "complete"
-
     else:
-
         biometric.biometric_status = "face_registered"
 
     db.commit()
@@ -120,7 +198,7 @@ def register_face(
 
     return {
         "success": True,
-        "message": "Face registered successfully",
+        "message": "Face registered successfully.",
         "student_id": student_id,
         "face_registered": True,
         "fingerprint_registered": (
@@ -137,7 +215,7 @@ def register_face(
 
 
 # =========================================================
-# FINGERPRINT REGISTRATION OPTIONS
+# FINGERPRINT REGISTRATION - OPTIONS
 # =========================================================
 
 @router.get(
@@ -151,23 +229,40 @@ def generate_fingerprint_registration_options(
     db: Session = Depends(get_db),
 ):
 
+    # -----------------------------------------------------
+    # FIND STUDENT
+    # -----------------------------------------------------
+
     student = db.query(Student).filter(
         Student.id == student_id
     ).first()
 
     if not student:
-
         raise HTTPException(
             status_code=404,
-            detail="Student not found",
+            detail="Student not found.",
         )
 
-    biometric = db.query(StudentBiometric).filter(
+    # -----------------------------------------------------
+    # FIND BIOMETRIC RECORD
+    # -----------------------------------------------------
+
+    biometric = db.query(
+        StudentBiometric
+    ).filter(
         StudentBiometric.student_id == student_id
     ).first()
 
-    if not biometric or not biometric.face_embedding:
+    if not biometric:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Please register the student's face "
+                "before registering the fingerprint."
+            ),
+        )
 
+    if not biometric.face_embedding:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -176,8 +271,11 @@ def generate_fingerprint_registration_options(
             ),
         )
 
-    if biometric.fingerprint_credential_id:
+    # -----------------------------------------------------
+    # PREVENT DUPLICATE FINGERPRINT
+    # -----------------------------------------------------
 
+    if biometric.fingerprint_credential_id:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -186,45 +284,92 @@ def generate_fingerprint_registration_options(
             ),
         )
 
-    # Generate a unique WebAuthn user ID
+    # -----------------------------------------------------
+    # GENERATE USER ID
+    # -----------------------------------------------------
+
     user_id = secrets.token_bytes(32)
 
-    options = generate_registration_options(
-        rp_id=RP_ID,
-        rp_name=RP_NAME,
-        user_id=user_id,
-        user_name=(
-            student.email
-            or f"student-{student.student_number}"
-        ),
-        user_display_name=(
-            f"{student.first_name} "
-            f"{student.last_name}"
-        ),
-        authenticator_selection=(
-            AuthenticatorSelectionCriteria(
-                authenticator_attachment=(
-                    AuthenticatorAttachment.PLATFORM
-                ),
-                resident_key=(
-                    ResidentKeyRequirement.PREFERRED
-                ),
-                user_verification=(
-                    UserVerificationRequirement.REQUIRED
-                ),
-            )
-        ),
-    )
+    # -----------------------------------------------------
+    # GENERATE WEBAUTHN REGISTRATION OPTIONS
+    # -----------------------------------------------------
+
+    try:
+
+        options = generate_registration_options(
+            rp_id=RP_ID,
+            rp_name=RP_NAME,
+            user_id=user_id,
+            user_name=(
+                student.email
+                or f"student-{student.student_number}"
+            ),
+            user_display_name=(
+                f"{student.first_name} "
+                f"{student.last_name}"
+            ),
+            authenticator_selection=(
+                AuthenticatorSelectionCriteria(
+                    authenticator_attachment=(
+                        AuthenticatorAttachment.PLATFORM
+                    ),
+                    resident_key=(
+                        ResidentKeyRequirement.PREFERRED
+                    ),
+                    user_verification=(
+                        UserVerificationRequirement.REQUIRED
+                    ),
+                )
+            ),
+        )
+
+    except Exception as exc:
+
+        print(
+            "WebAuthn registration options generation failed:",
+            repr(exc)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "The server could not create the "
+                "fingerprint registration request."
+            ),
+        )
+
+    # -----------------------------------------------------
+    # SAVE CHALLENGE
+    # -----------------------------------------------------
 
     registration_challenges[student_id] = (
         options.challenge
     )
 
-    return options_to_json(options)
+    print(
+        "Fingerprint registration challenge created "
+        f"for student {student_id}"
+    )
+
+    print(
+        "WebAuthn RP ID:",
+        RP_ID
+    )
+
+    print(
+        "WebAuthn origin:",
+        EXPECTED_ORIGIN
+    )
+
+    # -----------------------------------------------------
+    # RETURN REAL JSON OBJECT
+    # -----------------------------------------------------
+
+    return options_json_response(options)
 
 
 # =========================================================
-# VERIFY FINGERPRINT REGISTRATION
+# FINGERPRINT REGISTRATION - VERIFY
 # =========================================================
 
 @router.post(
@@ -239,23 +384,37 @@ def verify_fingerprint_registration(
     db: Session = Depends(get_db),
 ):
 
+    # -----------------------------------------------------
+    # FIND STUDENT
+    # -----------------------------------------------------
+
     student = db.query(Student).filter(
         Student.id == student_id
     ).first()
 
     if not student:
-
         raise HTTPException(
             status_code=404,
-            detail="Student not found",
+            detail="Student not found.",
         )
 
-    biometric = db.query(StudentBiometric).filter(
+    # -----------------------------------------------------
+    # FIND BIOMETRIC RECORD
+    # -----------------------------------------------------
+
+    biometric = db.query(
+        StudentBiometric
+    ).filter(
         StudentBiometric.student_id == student_id
     ).first()
 
-    if not biometric or not biometric.face_embedding:
+    if not biometric:
+        raise HTTPException(
+            status_code=400,
+            detail="Biometric registration not found.",
+        )
 
+    if not biometric.face_embedding:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -264,12 +423,15 @@ def verify_fingerprint_registration(
             ),
         )
 
+    # -----------------------------------------------------
+    # GET EXPECTED CHALLENGE
+    # -----------------------------------------------------
+
     expected_challenge = (
         registration_challenges.get(student_id)
     )
 
     if not expected_challenge:
-
         raise HTTPException(
             status_code=400,
             detail=(
@@ -279,9 +441,22 @@ def verify_fingerprint_registration(
             ),
         )
 
+    # -----------------------------------------------------
+    # CONVERT FRONTEND RESPONSE
+    # -----------------------------------------------------
+
     credential = data.model_dump(
         by_alias=True
     )
+
+    print(
+        "Received WebAuthn registration response "
+        f"for student {student_id}"
+    )
+
+    # -----------------------------------------------------
+    # VERIFY WEBAUTHN REGISTRATION
+    # -----------------------------------------------------
 
     try:
 
@@ -308,9 +483,9 @@ def verify_fingerprint_registration(
             ),
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # ENCODE CREDENTIAL ID
-    # =====================================================
+    # -----------------------------------------------------
 
     credential_id = (
         base64.urlsafe_b64encode(
@@ -320,9 +495,9 @@ def verify_fingerprint_registration(
         .decode("utf-8")
     )
 
-    # =====================================================
+    # -----------------------------------------------------
     # ENCODE PUBLIC KEY
-    # =====================================================
+    # -----------------------------------------------------
 
     public_key = (
         base64.urlsafe_b64encode(
@@ -332,9 +507,9 @@ def verify_fingerprint_registration(
         .decode("utf-8")
     )
 
-    # =====================================================
+    # -----------------------------------------------------
     # SAVE FINGERPRINT CREDENTIAL
-    # =====================================================
+    # -----------------------------------------------------
 
     biometric.fingerprint_credential_id = (
         credential_id
@@ -348,17 +523,23 @@ def verify_fingerprint_registration(
         verification.sign_count
     )
 
-    # Face + fingerprint are now registered
     biometric.biometric_status = "complete"
 
     db.commit()
     db.refresh(biometric)
 
-    # Challenge can only be used once
+    # -----------------------------------------------------
+    # REMOVE USED CHALLENGE
+    # -----------------------------------------------------
+
     registration_challenges.pop(
         student_id,
         None
     )
+
+    # -----------------------------------------------------
+    # SUCCESS
+    # -----------------------------------------------------
 
     return {
         "success": True,
@@ -394,13 +575,14 @@ def get_biometric_status(
     ).first()
 
     if not student:
-
         raise HTTPException(
             status_code=404,
-            detail="Student not found",
+            detail="Student not found.",
         )
 
-    biometric = db.query(StudentBiometric).filter(
+    biometric = db.query(
+        StudentBiometric
+    ).filter(
         StudentBiometric.student_id == student_id
     ).first()
 
@@ -423,15 +605,12 @@ def get_biometric_status(
     )
 
     if biometric_complete:
-
         status = "Registered"
 
     elif face_registered:
-
         status = "Fingerprint Required"
 
     else:
-
         status = "Face Required"
 
     return {
@@ -459,6 +638,10 @@ def generate_fingerprint_attendance_options(
 
     student_id = current_user["user_id"]
 
+    # -----------------------------------------------------
+    # FIND BIOMETRIC RECORD
+    # -----------------------------------------------------
+
     biometric = db.query(
         StudentBiometric
     ).filter(
@@ -466,74 +649,86 @@ def generate_fingerprint_attendance_options(
     ).first()
 
     if not biometric:
-
         raise HTTPException(
             status_code=400,
-            detail="No biometric registration found."
+            detail="No biometric registration found.",
         )
 
     if not biometric.fingerprint_credential_id:
-
         raise HTTPException(
             status_code=400,
-            detail="Fingerprint is not registered."
+            detail="Fingerprint is not registered.",
         )
 
     if not biometric.fingerprint_public_key:
-
         raise HTTPException(
             status_code=400,
-            detail="Fingerprint public key is missing."
+            detail="Fingerprint public key is missing.",
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # DECODE STORED CREDENTIAL ID
-    # =====================================================
+    # -----------------------------------------------------
+
+    credential_id = decode_base64url(
+        biometric.fingerprint_credential_id,
+        "fingerprint credential",
+    )
+
+    # -----------------------------------------------------
+    # GENERATE AUTHENTICATION OPTIONS
+    # -----------------------------------------------------
+
+    challenge = secrets.token_bytes(32)
 
     try:
 
-        credential_id = base64.urlsafe_b64decode(
-            biometric.fingerprint_credential_id
-            + "=" * (
-                4 - len(
-                    biometric.fingerprint_credential_id
-                ) % 4
-            ) % 4
+        options = generate_authentication_options(
+            rp_id=RP_ID,
+            challenge=challenge,
+            allow_credentials=[
+                PublicKeyCredentialDescriptor(
+                    id=credential_id
+                )
+            ],
+            user_verification=(
+                UserVerificationRequirement.REQUIRED
+            ),
         )
 
-    except Exception:
+    except Exception as exc:
+
+        print(
+            "WebAuthn authentication options generation failed:",
+            repr(exc)
+        )
 
         raise HTTPException(
             status_code=500,
             detail=(
-                "Stored fingerprint credential is invalid."
-            )
+                "The server could not create the "
+                "fingerprint authentication request."
+            ),
         )
 
-    # =====================================================
-    # GENERATE AUTHENTICATION OPTIONS
-    # =====================================================
-
-    challenge = secrets.token_bytes(32)
-
-    options = generate_authentication_options(
-        rp_id=RP_ID,
-        challenge=challenge,
-        allow_credentials=[
-            PublicKeyCredentialDescriptor(
-                id=credential_id
-            )
-        ],
-        user_verification=(
-            UserVerificationRequirement.REQUIRED
-        ),
-    )
+    # -----------------------------------------------------
+    # SAVE CHALLENGE
+    # -----------------------------------------------------
 
     authentication_challenges[student_id] = (
         options.challenge
     )
 
-    return options_to_json(options)
+    print(
+        "Fingerprint authentication challenge created "
+        f"for student {student_id}"
+    )
+
+    # -----------------------------------------------------
+    # RETURN REAL JSON OBJECT
+    # -----------------------------------------------------
+
+    return options_json_response(options)
 
 
 # =========================================================
@@ -552,8 +747,6 @@ def verify_fingerprint_attendance(
     db: Session = Depends(get_db),
 ):
 
-    # Import attendance models here to avoid
-    # unnecessary model import issues at startup.
     from app.models.attendance import (
         Attendance,
         Module,
@@ -562,59 +755,56 @@ def verify_fingerprint_attendance(
 
     student_id = current_user["user_id"]
 
-    # =====================================================
+    # -----------------------------------------------------
     # CHECK STUDENT
-    # =====================================================
+    # -----------------------------------------------------
 
     student = db.query(Student).filter(
         Student.id == student_id
     ).first()
 
     if not student:
-
         raise HTTPException(
             status_code=404,
-            detail="Student not found."
+            detail="Student not found.",
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # CHECK MODULE
-    # =====================================================
+    # -----------------------------------------------------
 
     module = db.query(Module).filter(
         Module.id == module_id
     ).first()
 
     if not module:
-
         raise HTTPException(
             status_code=404,
-            detail="Module not found."
+            detail="Module not found.",
         )
 
-    # =====================================================
-    # CHECK STUDENT IS REGISTERED FOR MODULE
-    # =====================================================
+    # -----------------------------------------------------
+    # CHECK MODULE REGISTRATION
+    # -----------------------------------------------------
 
     registration = db.query(
         StudentModule
     ).filter(
         StudentModule.student_id == student_id,
-        StudentModule.module_id == module_id
+        StudentModule.module_id == module_id,
     ).first()
 
     if not registration:
-
         raise HTTPException(
             status_code=403,
             detail=(
                 "You are not registered for this module."
-            )
+            ),
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # CHECK DUPLICATE ATTENDANCE
-    # =====================================================
+    # -----------------------------------------------------
 
     today = datetime.now().date()
 
@@ -623,22 +813,21 @@ def verify_fingerprint_attendance(
     ).filter(
         Attendance.student_id == student_id,
         Attendance.module_id == module_id,
-        Attendance.date == today
+        Attendance.date == today,
     ).first()
 
     if existing_attendance:
-
         raise HTTPException(
             status_code=400,
             detail=(
                 "You have already checked in "
                 "for this module today."
-            )
+            ),
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # GET BIOMETRIC RECORD
-    # =====================================================
+    # -----------------------------------------------------
 
     biometric = db.query(
         StudentBiometric
@@ -647,82 +836,61 @@ def verify_fingerprint_attendance(
     ).first()
 
     if not biometric:
-
         raise HTTPException(
             status_code=400,
-            detail="No biometric registration found."
+            detail="No biometric registration found.",
         )
 
     if not biometric.fingerprint_credential_id:
-
         raise HTTPException(
             status_code=400,
-            detail="Fingerprint is not registered."
+            detail="Fingerprint is not registered.",
         )
 
     if not biometric.fingerprint_public_key:
-
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Fingerprint public key is missing."
-            )
+            detail="Fingerprint public key is missing.",
         )
 
-    # =====================================================
-    # GET ACTIVE AUTHENTICATION CHALLENGE
-    # =====================================================
+    # -----------------------------------------------------
+    # GET ACTIVE CHALLENGE
+    # -----------------------------------------------------
 
     expected_challenge = (
         authentication_challenges.get(student_id)
     )
 
     if not expected_challenge:
-
         raise HTTPException(
             status_code=400,
             detail=(
                 "No active fingerprint authentication "
                 "request was found. Please try again."
-            )
+            ),
         )
 
-    # =====================================================
-    # DECODE STORED CREDENTIAL ID AND PUBLIC KEY
-    # =====================================================
+    # -----------------------------------------------------
+    # DECODE CREDENTIAL ID
+    # -----------------------------------------------------
 
-    try:
+    credential_id = decode_base64url(
+        biometric.fingerprint_credential_id,
+        "fingerprint credential",
+    )
 
-        credential_id = base64.urlsafe_b64decode(
-            biometric.fingerprint_credential_id
-            + "=" * (
-                4 - len(
-                    biometric.fingerprint_credential_id
-                ) % 4
-            ) % 4
-        )
+    # -----------------------------------------------------
+    # DECODE PUBLIC KEY
+    # -----------------------------------------------------
 
-        public_key = base64.urlsafe_b64decode(
-            biometric.fingerprint_public_key
-            + "=" * (
-                4 - len(
-                    biometric.fingerprint_public_key
-                ) % 4
-            ) % 4
-        )
+    public_key = decode_base64url(
+        biometric.fingerprint_public_key,
+        "fingerprint public key",
+    )
 
-    except Exception:
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Stored fingerprint credential is invalid."
-            )
-        )
-
-    # =====================================================
+    # -----------------------------------------------------
     # VERIFY WEBAUTHN AUTHENTICATION
-    # =====================================================
+    # -----------------------------------------------------
 
     try:
 
@@ -747,52 +915,50 @@ def verify_fingerprint_attendance(
 
         raise HTTPException(
             status_code=401,
-            detail="Fingerprint verification failed."
+            detail="Fingerprint verification failed.",
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # VERIFY CREDENTIAL MATCH
-    # =====================================================
+    # -----------------------------------------------------
 
     if verification.credential_id != credential_id:
-
         raise HTTPException(
             status_code=401,
             detail=(
                 "Fingerprint credential does not match."
-            )
+            ),
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # VERIFY USER VERIFICATION
-    # =====================================================
+    # -----------------------------------------------------
 
     if not verification.user_verified:
-
         raise HTTPException(
             status_code=401,
             detail=(
                 "Fingerprint verification was not completed."
-            )
+            ),
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # UPDATE SIGN COUNT
-    # =====================================================
+    # -----------------------------------------------------
 
     biometric.fingerprint_sign_count = (
         verification.new_sign_count
     )
 
-    # =====================================================
+    # -----------------------------------------------------
     # CREATE ATTENDANCE
-    # =====================================================
+    # -----------------------------------------------------
 
     new_attendance = Attendance(
         student_id=student_id,
         module_id=module_id,
         date=today,
-        time_in=datetime.now()
+        time_in=datetime.now(),
     )
 
     db.add(new_attendance)
@@ -801,18 +967,18 @@ def verify_fingerprint_attendance(
 
     db.refresh(new_attendance)
 
-    # =====================================================
+    # -----------------------------------------------------
     # REMOVE USED CHALLENGE
-    # =====================================================
+    # -----------------------------------------------------
 
     authentication_challenges.pop(
         student_id,
         None
     )
 
-    # =====================================================
-    # SUCCESS RESPONSE
-    # =====================================================
+    # -----------------------------------------------------
+    # SUCCESS
+    # -----------------------------------------------------
 
     return {
         "success": True,
@@ -826,4 +992,222 @@ def verify_fingerprint_attendance(
         "attendance_id": new_attendance.id,
         "date": str(new_attendance.date),
         "time_in": str(new_attendance.time_in),
+    }
+
+
+# =========================================================
+# FACE ATTENDANCE - VERIFY + CHECK-IN
+# =========================================================
+
+@router.post(
+    "/attendance/face/verify"
+)
+def verify_face_attendance(
+    module_id: int,
+    face_embedding: str,
+    current_user=Depends(
+        require_role("student")
+    ),
+    db: Session = Depends(get_db),
+):
+
+    from app.models.attendance import (
+        Attendance,
+        Module,
+        StudentModule,
+    )
+
+    student_id = current_user["user_id"]
+
+    # -----------------------------------------------------
+    # CHECK STUDENT
+    # -----------------------------------------------------
+
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
+
+    if not student:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    # -----------------------------------------------------
+    # CHECK MODULE
+    # -----------------------------------------------------
+
+    module = db.query(Module).filter(
+        Module.id == module_id
+    ).first()
+
+    if not module:
+        raise HTTPException(
+            status_code=404,
+            detail="Module not found.",
+        )
+
+    # -----------------------------------------------------
+    # CHECK MODULE REGISTRATION
+    # -----------------------------------------------------
+
+    registration = db.query(
+        StudentModule
+    ).filter(
+        StudentModule.student_id == student_id,
+        StudentModule.module_id == module_id,
+    ).first()
+
+    if not registration:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "You are not registered for this module."
+            ),
+        )
+
+    # -----------------------------------------------------
+    # CHECK DUPLICATE ATTENDANCE
+    # -----------------------------------------------------
+
+    today = datetime.now().date()
+
+    existing_attendance = db.query(
+        Attendance
+    ).filter(
+        Attendance.student_id == student_id,
+        Attendance.module_id == module_id,
+        Attendance.date == today,
+    ).first()
+
+    if existing_attendance:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "You have already checked in "
+                "for this module today."
+            ),
+        )
+
+    # -----------------------------------------------------
+    # GET REGISTERED FACE
+    # -----------------------------------------------------
+
+    biometric = db.query(
+        StudentBiometric
+    ).filter(
+        StudentBiometric.student_id == student_id
+    ).first()
+
+    if not biometric:
+        raise HTTPException(
+            status_code=400,
+            detail="No biometric registration found.",
+        )
+
+    if not biometric.face_embedding:
+        raise HTTPException(
+            status_code=400,
+            detail="Face is not registered.",
+        )
+
+    # -----------------------------------------------------
+    # CONVERT EMBEDDINGS
+    # -----------------------------------------------------
+
+    try:
+
+        registered_embedding = [
+            float(value)
+            for value in biometric.face_embedding.split(",")
+        ]
+
+        submitted_embedding = [
+            float(value)
+            for value in face_embedding.split(",")
+        ]
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid face embedding.",
+        )
+
+    # -----------------------------------------------------
+    # CHECK EMBEDDING SIZE
+    # -----------------------------------------------------
+
+    if len(registered_embedding) != 128:
+        raise HTTPException(
+            status_code=500,
+            detail="Stored face biometric is invalid.",
+        )
+
+    if len(submitted_embedding) != 128:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid face biometric.",
+        )
+
+    # -----------------------------------------------------
+    # CALCULATE EUCLIDEAN DISTANCE
+    # -----------------------------------------------------
+
+    distance = sum(
+        (
+            registered_embedding[i]
+            - submitted_embedding[i]
+        ) ** 2
+        for i in range(128)
+    ) ** 0.5
+
+    FACE_THRESHOLD = 0.6
+
+    if distance > FACE_THRESHOLD:
+
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Face verification failed. "
+                "The detected face does not match "
+                "the registered student."
+            ),
+        )
+
+    # -----------------------------------------------------
+    # CREATE ATTENDANCE
+    # -----------------------------------------------------
+
+    new_attendance = Attendance(
+        student_id=student_id,
+        module_id=module_id,
+        date=today,
+        time_in=datetime.now(),
+    )
+
+    db.add(new_attendance)
+
+    db.commit()
+
+    db.refresh(new_attendance)
+
+    # -----------------------------------------------------
+    # SUCCESS
+    # -----------------------------------------------------
+
+    return {
+        "success": True,
+        "verified": True,
+        "method": "face",
+        "message": (
+            "Face verified and attendance "
+            "recorded successfully."
+        ),
+        "student_id": student_id,
+        "module_id": module_id,
+        "attendance_id": new_attendance.id,
+        "date": str(new_attendance.date),
+        "time_in": str(new_attendance.time_in),
+        "face_distance": distance,
     }
