@@ -10,7 +10,7 @@ function BiometricRegistration() {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
-
+  const [selectedStudentData, setSelectedStudentData] = useState(null);
   const [faceStatus, setFaceStatus] = useState("Not Registered");
   const [fingerprintStatus, setFingerprintStatus] =
     useState("Not Registered");
@@ -121,7 +121,7 @@ function BiometricRegistration() {
   // SELECT STUDENT
   // =====================================================
 
-  const handleStudentChange = async (e) => {
+ const handleStudentChange = async (e) => {
     const studentId = e.target.value;
 
     setSelectedStudent(studentId);
@@ -134,8 +134,15 @@ function BiometricRegistration() {
     stopCamera();
 
     if (!studentId) {
+      setSelectedStudentData(null);
       return;
     }
+
+    const student = students.find(
+      (item) => String(item.id) === String(studentId)
+    );
+
+    setSelectedStudentData(student || null);
 
     try {
       const response = await axios.get(
@@ -210,14 +217,7 @@ function BiometricRegistration() {
         });
 
       streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-
-        await videoRef.current.play();
-      }
-
-      setCameraActive(true);
+         setCameraActive(true);
 
       setMessage(
         "Camera is ready. Position the student's face in the frame."
@@ -244,6 +244,17 @@ function BiometricRegistration() {
       }
     }
   };
+  useEffect(() => {
+  if (cameraActive && videoRef.current && streamRef.current) {
+    videoRef.current.srcObject = streamRef.current;
+
+    videoRef.current
+      .play()
+      .catch((err) => {
+        console.error("Video playback error:", err);
+      });
+  }
+}, [cameraActive]);
 
   // =====================================================
   // STOP CAMERA

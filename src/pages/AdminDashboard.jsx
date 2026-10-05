@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -65,31 +66,33 @@ function AdminDashboard() {
 
         <div className="admin-actions">
 
-          {/* Register Employee */}
           {/* Assign Lecturer */}
 
-<div className="admin-card">
+          <div className="admin-card">
 
-  <div className="admin-card-icon">
-    📚
-  </div>
+            <div className="admin-card-icon">
+              📚
+            </div>
 
-  <h2>Assign Lecturer</h2>
+            <h2>Assign Lecturer</h2>
 
-  <p>
-    Assign lecturers to the modules they teach.
-  </p>
+            <p>
+              Assign lecturers to the modules they teach.
+            </p>
 
-  <button
-    className="dashboard-button"
-    onClick={() =>
-      navigate("/admin/assign-lecturer")
-    }
-  >
-    Assign Lecturer
-  </button>
+            <button
+              className="dashboard-button"
+              onClick={() =>
+                navigate("/admin/assign-lecturer")
+              }
+            >
+              Assign Lecturer
+            </button>
 
-</div>
+          </div>
+
+
+          {/* Register Employee */}
 
           <div className="admin-card">
 
@@ -143,6 +146,33 @@ function AdminDashboard() {
           </div>
 
 
+          {/* Biometric Registration */}
+
+          <div className="admin-card">
+
+            <div className="admin-card-icon">
+              🔐
+            </div>
+
+            <h2>Biometric Registration</h2>
+
+            <p>
+              Register face and fingerprint biometrics
+              for students and employees.
+            </p>
+
+            <button
+              className="dashboard-button"
+              onClick={() =>
+                navigate("/admin/biometric")
+              }
+            >
+              Register Biometrics
+            </button>
+
+          </div>
+
+
           {/* Delete User */}
 
           <div className="admin-card delete-card">
@@ -175,6 +205,7 @@ function AdminDashboard() {
                   <option value="employee">
                     Employee
                   </option>
+
                 </select>
 
                 <input
