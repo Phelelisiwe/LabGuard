@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, String
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -46,6 +45,12 @@ class StudentBiometric(Base):
         nullable=True
     )
 
+    fingerprint_sign_count = Column(
+        Integer,
+        nullable=False,
+        default=0
+    )
+
     # =====================================================
     # REGISTRATION STATUS
     # =====================================================
@@ -79,4 +84,3 @@ class StudentBiometric(Base):
         "Student",
         back_populates="biometric"
     )
-
