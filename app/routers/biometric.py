@@ -63,12 +63,6 @@ EXPECTED_ORIGIN = os.getenv(
 # =========================================================
 # TEMPORARY CHALLENGE STORAGE
 # =========================================================
-#
-# These dictionaries are suitable for the current project
-# demonstration. For a production system, challenges should
-# be stored in a shared server-side store such as Redis or
-# the database.
-#
 
 registration_challenges = {}
 authentication_challenges = {}
@@ -81,10 +75,6 @@ authentication_challenges = {}
 def options_json_response(options):
     """
     Convert py_webauthn options into a real JSON object.
-
-    options_to_json() returns a JSON string. FastAPI should
-    return the decoded JSON object so the frontend receives
-    the expected WebAuthn options structure.
     """
 
     try:
@@ -207,8 +197,7 @@ def register_face(
         ),
         "biometric_complete": (
             biometric.face_embedding is not None
-            and biometric.fingerprint_credential_id
-            is not None
+            and biometric.fingerprint_credential_id is not None
         ),
         "status": biometric.biometric_status,
     }
@@ -594,8 +583,7 @@ def get_biometric_status(
 
     fingerprint_registered = (
         biometric is not None
-        and biometric.fingerprint_credential_id
-        is not None
+        and biometric.fingerprint_credential_id is not None
         and biometric.fingerprint_credential_id != ""
     )
 
@@ -1162,7 +1150,27 @@ def verify_face_attendance(
         for i in range(128)
     ) ** 0.5
 
+    # -----------------------------------------------------
+    # FACE MATCHING THRESHOLD
+    # -----------------------------------------------------
+
     FACE_THRESHOLD = 0.6
+
+    # -----------------------------------------------------
+    # TEMPORARY FACE VERIFICATION DEBUG
+    # -----------------------------------------------------
+
+    print("====================================")
+    print("FACE VERIFICATION DEBUG")
+    print(f"Student ID: {student_id}")
+    print(f"Face distance: {distance:.4f}")
+    print(f"Face threshold: {FACE_THRESHOLD}")
+    print(f"Match: {distance <= FACE_THRESHOLD}")
+    print("====================================")
+
+    # -----------------------------------------------------
+    # REJECT FACE IF DISTANCE IS TOO HIGH
+    # -----------------------------------------------------
 
     if distance > FACE_THRESHOLD:
 
