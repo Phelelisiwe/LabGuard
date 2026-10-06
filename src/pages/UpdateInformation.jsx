@@ -1,99 +1,179 @@
-
 import { useNavigate } from "react-router-dom";
 
 function UpdateInformation() {
   const navigate = useNavigate();
 
   return (
-    <div className="update-page">
+    <div className="modern-update-page">
 
-      <nav className="update-navbar">
-git push -u origin main
-        <div className="update-logo">
-          LabGuard
+      {/* Navigation */}
+      <nav className="modern-update-navbar">
+
+        <div
+          className="modern-update-brand"
+          onClick={() => navigate(-1)}
+        >
+          <div className="modern-update-logo">
+            LG
+          </div>
+
+          <div className="modern-update-brand-text">
+            <strong>LabGuard</strong>
+            <span>Account Management</span>
+          </div>
         </div>
 
         <button
-          className="update-back-button"
+          className="modern-update-back"
           onClick={() => navigate(-1)}
         >
+          <span>←</span>
           Back
         </button>
 
       </nav>
 
-      <main className="update-content">
 
-        <div className="update-header">
+      {/* Main Content */}
+      <main className="modern-update-content">
+
+        {/* Page Header */}
+        <section className="modern-update-heading">
+
+          <div className="modern-update-eyebrow">
+            <span></span>
+            ACCOUNT SETTINGS
+          </div>
+
           <h1>Update Information</h1>
 
           <p>
-            Manage your account information and password.
+            Manage your LabGuard account information and
+            security settings from one place.
           </p>
-        </div>
 
-        <div className="update-cards">
+        </section>
 
-          {/* Change Email */}
 
-          <div className="update-card">
+        {/* Settings Cards */}
+        <section className="modern-update-grid">
 
-            <div className="update-card-icon">
-              📧
+          {/* Email Card */}
+          <article className="modern-update-card">
+
+            <div className="modern-update-card-top">
+
+              <div className="modern-update-icon email-icon">
+                <span>✉</span>
+              </div>
+
+              <div className="modern-update-status">
+                ACCOUNT
+              </div>
+
             </div>
 
-            <h2>Change Email</h2>
+            <div className="modern-update-card-content">
 
-            <p>
-              Update the email address linked to your
-              LabGuard account.
-            </p>
+              <h2>Change Email</h2>
 
-            <button
-              className="update-button"
-              onClick={() =>
-                navigate("/update-email")
-              }
-            >
-              Change Email
-            </button>
+              <p>
+                Update the email address linked to your
+                LabGuard account. Your new email will be
+                used for account communication and verification.
+              </p>
 
-          </div>
-
-
-          {/* Change Password */}
-
-          <div className="update-card">
-
-            <div className="update-card-icon">
-              🔐
             </div>
 
-            <h2>Change Password</h2>
-
-            <p>
-              Request a secure link to change your
-              LabGuard password.
-            </p>
+            <div className="modern-update-divider"></div>
 
             <button
-              className="update-button"
-              onClick={() =>
-                navigate("/change-password")
-              }
+              className="modern-update-action"
+              onClick={() => navigate("/update-email")}
             >
-              Change Password
+              <span>Change Email</span>
+              <span className="modern-update-arrow">→</span>
             </button>
 
+          </article>
+
+
+          {/* Password Card */}
+          <article className="modern-update-card">
+
+            <div className="modern-update-card-top">
+
+              <div className="modern-update-icon password-icon">
+                <span>🔒</span>
+              </div>
+
+              <div className="modern-update-status">
+                SECURITY
+              </div>
+
+            </div>
+
+            <div className="modern-update-card-content">
+
+              <h2>Change Password</h2>
+
+              <p>
+                Request a secure link to change your
+                LabGuard password and keep your account
+                protected.
+              </p>
+
+            </div>
+
+            <div className="modern-update-divider"></div>
+
+            <button
+              className="modern-update-action"
+              onClick={() => navigate("/change-password")}
+            >
+              <span>Change Password</span>
+              <span className="modern-update-arrow">→</span>
+            </button>
+
+          </article>
+
+        </section>
+
+
+        {/* Security Information */}
+        <section className="modern-update-security">
+
+          <div className="modern-security-icon">
+            ✓
           </div>
 
-        </div>
+          <div>
+            <strong>Keep your account secure</strong>
+
+            <p>
+              Make sure your email address is up to date
+              and use a strong password for your LabGuard account.
+            </p>
+          </div>
+
+        </section>
 
       </main>
+
+
+      {/* Footer */}
+      <footer className="modern-update-footer">
+
+        <span>© 2026 LabGuard</span>
+
+        <span>
+          Laboratory Management System
+        </span>
+
+      </footer>
 
     </div>
   );
 }
 
 export default UpdateInformation;
-

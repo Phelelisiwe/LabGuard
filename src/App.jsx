@@ -1,11 +1,11 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import "./App.css";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import OTPVerification from "./pages/OTPVerification";
 import ForgotPassword from "./pages/ForgotPassword";
-
+import ChangePassword from "./pages/ChangePassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import RegisterStudent from "./pages/RegisterStudent";
 import RegisterEmployee from "./pages/RegisterEmployee";
@@ -24,6 +24,9 @@ import StudentCheckIn from "./pages/StudentCheckIn";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LecturerModules from "./pages/LecturerModules";
 import LecturerAttendance from "./pages/LecturerAttendance";
+import LecturerStudents from "./pages/LecturerStudents";
+import LecturerOverallAttendance from "./pages/LecturerOverallAttendance";
+import LecturerPrediction from "./pages/LecturerPrediction";
 
 import UpdateInformation from "./pages/UpdateInformation";
 import ResetPassword from "./pages/ResetPassword";
@@ -141,28 +144,40 @@ function App() {
           element={<StudentCheckIn />}
         />
 
+       {/* ========================= */}
+{/* LECTURER */}
+{/* ========================= */}
 
-        {/* ========================= */}
-        {/* LECTURER */}
-        {/* ========================= */}
+<Route
+  path="/lecturer"
+  element={<LecturerDashboard />}
+/>
 
-        <Route
-          path="/lecturer"
-          element={<LecturerDashboard />}
-        />
+<Route
+  path="/lecturer/modules"
+  element={<LecturerModules />}
+/>
 
-        <Route
-          path="/lecturer/modules"
-          element={<LecturerModules />}
-        />
+<Route
+  path="/lecturer/students/:moduleId"
+  element={<LecturerStudents />}
+/>
 
-        <Route
-          path="/lecturer/attendance/:moduleId"
-          element={<LecturerAttendance />}
-        />
+<Route
+  path="/lecturer/attendance/:moduleId"
+  element={<LecturerAttendance />}
+/>
 
+<Route
+  path="/lecturer/attendance/:moduleId/overall"
+  element={<LecturerOverallAttendance />}
+/>
 
-        {/* ========================= */}
+<Route
+  path="/lecturer/attendance/:moduleId/prediction"
+  element={<LecturerPrediction />}
+/>
+             {/* ========================= */}
         {/* ACCOUNT */}
         {/* ========================= */}
 
@@ -171,12 +186,15 @@ function App() {
           element={<UpdateInformation />}
         />
 
+        <Route
+          path="/change-password"
+          element={<ChangePassword />}
+        />
+
       </Routes>
     </BrowserRouter>
   );
 }
 
-
 export default App;
-
 

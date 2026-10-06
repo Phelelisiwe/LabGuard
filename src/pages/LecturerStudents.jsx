@@ -4,7 +4,7 @@ import axios from "axios";
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
-function LecturerAttendance() {
+function LecturerStudents() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
 
@@ -13,7 +13,7 @@ function LecturerAttendance() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadAttendance = async () => {
+    const loadStudents = async () => {
       try {
         const token = localStorage.getItem("access_token");
 
@@ -23,7 +23,7 @@ function LecturerAttendance() {
         }
 
         const response = await axios.get(
-          `${API_URL}/lecturer/modules/${moduleId}/attendance`,
+          `${API_URL}/lecturer/modules/${moduleId}/students`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -41,14 +41,14 @@ function LecturerAttendance() {
 
         setError(
           err.response?.data?.detail ||
-            "Failed to load attendance."
+            "Failed to load students."
         );
       } finally {
         setLoading(false);
       }
     };
 
-    loadAttendance();
+    loadStudents();
   }, [moduleId, navigate]);
 
   return (
@@ -64,12 +64,12 @@ function LecturerAttendance() {
           </span>
 
           <h1>
-            {data?.module?.module_code || "Module"} Attendance
+            {data?.module?.module_code || "Module"} Students
           </h1>
 
           <p>
             {data?.module?.module_name ||
-              "Attendance register"}
+              "Students registered for this module"}
           </p>
 
         </div>
@@ -90,19 +90,17 @@ function LecturerAttendance() {
         {/* LOADING */}
         {loading && (
           <div className="status-card">
-
             <div className="loading-icon">
               ⟳
             </div>
 
             <h2>
-              Loading Attendance
+              Loading Students
             </h2>
 
             <p>
-              Please wait while the attendance register is loaded.
+              Please wait while the student list is loaded.
             </p>
-
           </div>
         )}
 
@@ -117,7 +115,7 @@ function LecturerAttendance() {
 
             <div>
               <h3>
-                Unable to Load Attendance
+                Unable to Load Students
               </h3>
 
               <p>
@@ -133,17 +131,17 @@ function LecturerAttendance() {
         {!loading && !error && data && (
           <>
 
-            {/* ATTENDANCE SUMMARY */}
-            <section className="attendance-hero-card">
+            {/* MODULE INTRO */}
+            <section className="module-hero-card">
 
-              <div className="attendance-hero-icon">
-                ✓
+              <div className="module-hero-icon">
+                👨‍🎓
               </div>
 
-              <div className="attendance-hero-text">
+              <div className="module-hero-text">
 
                 <span>
-                  ATTENDANCE REGISTER
+                  MODULE STUDENTS
                 </span>
 
                 <h2>
@@ -156,14 +154,14 @@ function LecturerAttendance() {
 
               </div>
 
-              <div className="attendance-total">
+              <div className="student-total">
 
                 <strong>
-                  {data.total_records}
+                  {data.total_students}
                 </strong>
 
                 <span>
-                  Attendance Records
+                  Students
                 </span>
 
               </div>
@@ -171,8 +169,153 @@ function LecturerAttendance() {
             </section>
 
 
+            {/* STUDENT LIST */}
+            <section className="students-section">
+
+              <div className="section-heading">
+
+                <div>
+                  <span>
+                    REGISTERED STUDENTS
+                  </span>
+
+                  <h2>
+                    Student List
+                  </h2>
+
+                  <p>
+                    Students currently registered for this module.
+                  </p>
+                </div>
+
+                <div className="student-count-badge">
+                  {data.total_students} Registered
+                </div>
+
+              </div>
+
+
+              {data.students.length === 0 ? (
+
+                <div className="empty-students">
+
+                  <div className="empty-icon">
+                    👥
+                  </div>
+
+                  <h3>
+                    No Students Registered
+                  </h3>
+
+                  <p>
+                    There are currently no students registered
+                    for this module.
+                  </p>
+
+                </div>
+
+              ) : (
+
+                <div className="student-table-wrapper">
+
+                  <table className="students-table">
+
+                    <thead>
+                      <tr>
+                        <th>
+                          Student Number
+                        </th>
+
+                        <th>
+                          Student
+                        </th>
+
+                        <th>
+                          Course
+                        </th>
+
+                        <th>
+                          Year
+                        </th>
+
+                        <th>
+                          Email
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+
+                      {data.students.map((student) => (
+
+                        <tr key={student.id}>
+
+                          <td>
+                            <span className="student-number">
+                              {student.student_number}
+                            </span>
+                          </td>
+
+                          <td>
+
+                            <div className="student-name-cell">
+
+                              <div className="student-avatar">
+                                {student.first_name
+                                  ?.charAt(0)
+                                  .toUpperCase()}
+                              </div>
+
+                              <div>
+                                <strong>
+                                  {student.first_name}{" "}
+                                  {student.last_name}
+                                </strong>
+
+                                <small>
+                                  Student
+                                </small>
+                              </div>
+
+                            </div>
+
+                          </td>
+
+                          <td>
+                            <span className="course-badge">
+                              {student.course}
+                            </span>
+                          </td>
+
+                          <td>
+                            <span className="year-badge">
+                              Year {student.current_year}
+                            </span>
+                          </td>
+
+                          <td>
+                            <span className="student-email">
+                              {student.email}
+                            </span>
+                          </td>
+
+                        </tr>
+
+                      ))}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              )}
+
+            </section>
+
+
             {/* QUICK ACTIONS */}
-            <section className="attendance-actions-card">
+            <section className="quick-actions-card">
 
               <div>
 
@@ -180,13 +323,13 @@ function LecturerAttendance() {
                   MODULE MANAGEMENT
                 </span>
 
-                <h2>
-                  Manage Attendance
-                </h2>
+                <h3>
+                  Continue Managing This Module
+                </h3>
 
                 <p>
-                  View students, monitor overall attendance,
-                  or generate the next attendance prediction.
+                  View attendance records or see the overall
+                  attendance performance of your students.
                 </p>
 
               </div>
@@ -196,11 +339,11 @@ function LecturerAttendance() {
                 <button
                   onClick={() =>
                     navigate(
-                      `/lecturer/students/${moduleId}`
+                      `/lecturer/attendance/${moduleId}`
                     )
                   }
                 >
-                  View Students
+                  View Attendance
                 </button>
 
                 <button
@@ -215,165 +358,14 @@ function LecturerAttendance() {
 
                 <button
                   onClick={() =>
-                    navigate(
-                      `/lecturer/attendance/${moduleId}/prediction`
-                    )
+                    navigate("/lecturer/modules")
                   }
+                  className="secondary-action"
                 >
-                  Predict Attendance
+                  Back to Modules
                 </button>
 
               </div>
-
-            </section>
-
-
-            {/* ATTENDANCE TABLE */}
-            <section className="attendance-section">
-
-              <div className="section-heading">
-
-                <div>
-
-                  <span>
-                    STUDENT ATTENDANCE
-                  </span>
-
-                  <h2>
-                    Attendance Register
-                  </h2>
-
-                  <p>
-                    Attendance records for students registered
-                    in this module.
-                  </p>
-
-                </div>
-
-                <div className="attendance-count-badge">
-                  {data.total_records} Records
-                </div>
-
-              </div>
-
-
-              {data.attendance.length === 0 ? (
-
-                <div className="empty-attendance">
-
-                  <div className="empty-icon">
-                    📋
-                  </div>
-
-                  <h3>
-                    No Attendance Records
-                  </h3>
-
-                  <p>
-                    No students have attended this module yet.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                <div className="attendance-table-wrapper">
-
-                  <table className="attendance-table">
-
-                    <thead>
-
-                      <tr>
-                        <th>
-                          Student Number
-                        </th>
-
-                        <th>
-                          Student
-                        </th>
-
-                        <th>
-                          Date
-                        </th>
-
-                        <th>
-                          Time In
-                        </th>
-
-                        <th>
-                          Time Out
-                        </th>
-
-                        <th>
-                          Status
-                        </th>
-                      </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                      {data.attendance.map((record) => (
-
-                        <tr key={record.attendance_id}>
-
-                          <td>
-                            <span className="student-number">
-                              {record.student_number}
-                            </span>
-                          </td>
-
-                          <td>
-
-                            <div className="student-name-cell">
-
-                              <div className="student-avatar">
-                                {record.student_name
-                                  ?.charAt(0)
-                                  .toUpperCase()}
-                              </div>
-
-                              <strong>
-                                {record.student_name}
-                              </strong>
-
-                            </div>
-
-                          </td>
-
-                          <td>
-                            <span className="date-value">
-                              {record.date}
-                            </span>
-                          </td>
-
-                          <td>
-                            {record.time_in || "-"}
-                          </td>
-
-                          <td>
-                            {record.time_out || "-"}
-                          </td>
-
-                          <td>
-
-                            <span className="status-present">
-                              ✓ {record.status || "Present"}
-                            </span>
-
-                          </td>
-
-                        </tr>
-
-                      ))}
-
-                    </tbody>
-
-                  </table>
-
-                </div>
-
-              )}
 
             </section>
 
@@ -400,4 +392,4 @@ function LecturerAttendance() {
   );
 }
 
-export default LecturerAttendance;
+export default LecturerStudents;

@@ -4,51 +4,61 @@ import { useNavigate } from "react-router-dom";
 function StudentDashboard() {
   const navigate = useNavigate();
 
+  const email = localStorage.getItem("email") || "Student";
+  const initials = email.charAt(0).toUpperCase();
+
   const logout = () => {
     localStorage.clear();
     navigate("/login");
   };
 
-  const email = localStorage.getItem("email");
-
   return (
-    <div className="student-dashboard">
+    <div className="modern-student-dashboard">
 
-      {/* Top Navigation */}
-      <header className="student-header">
+      {/* =========================
+          TOP NAVIGATION
+      ========================== */}
 
-        <div className="brand-section">
+      <header className="modern-student-nav">
 
-          <div className="tut-logo">
-            TUT
+        <div
+          className="modern-student-brand"
+          onClick={() => navigate("/student")}
+        >
+
+          <div className="modern-student-logo">
+            LG
           </div>
 
-          <div className="brand-divider"></div>
-
-          <div className="labguard-brand">
-            <h1>LabGuard</h1>
-            <span>Laboratory Management System</span>
+          <div className="modern-student-brand-text">
+            <strong>LabGuard</strong>
+            <span>Student Portal</span>
           </div>
 
         </div>
 
-        <div className="student-header-right">
 
-          <div className="student-user">
-            <div className="user-icon">
-              {email ? email.charAt(0).toUpperCase() : "S"}
+        <div className="modern-student-nav-right">
+
+          <div className="modern-student-user">
+
+            <div className="modern-student-avatar">
+              {initials}
             </div>
 
-            <div>
+            <div className="modern-student-user-info">
               <strong>Student</strong>
-              <span>{email || "Student Account"}</span>
+              <span>{email}</span>
             </div>
+
           </div>
 
+
           <button
-            className="logout-button"
+            className="modern-student-logout"
             onClick={logout}
           >
+            <span>↪</span>
             Logout
           </button>
 
@@ -57,112 +67,211 @@ function StudentDashboard() {
       </header>
 
 
-      {/* Main Content */}
-      <main className="student-main">
+      {/* =========================
+          MAIN CONTENT
+      ========================== */}
 
-        <section className="welcome-section">
+      <main className="modern-student-content">
 
-          <div>
-            <p className="welcome-label">
-              STUDENT PORTAL
-            </p>
 
-            <h2>
-              Welcome to LabGuard
-            </h2>
+        {/* =========================
+            WELCOME
+        ========================== */}
+
+        <section className="modern-student-welcome">
+
+          <div className="modern-student-welcome-text">
+
+            <div className="modern-student-eyebrow">
+              <span></span>
+              STUDENT WORKSPACE
+            </div>
+
+            <h1>
+              Welcome back
+            </h1>
 
             <p>
-              Manage your laboratory modules, attendance and
-              laboratory access from one place.
+              Manage your modules, attendance and laboratory
+              access from one central workspace.
             </p>
+
           </div>
 
-          <div className="welcome-accent"></div>
+
+          <button
+            className="modern-student-primary"
+            onClick={() => navigate("/student/modules")}
+          >
+            <span>
+              View My Modules
+            </span>
+
+            <span className="modern-student-arrow">
+              →
+            </span>
+          </button>
 
         </section>
 
 
-        {/* Dashboard Cards */}
-        <section className="dashboard-section">
+        {/* =========================
+            QUICK ACCESS
+        ========================== */}
 
-          <div className="section-heading">
-            <h3>Student Services</h3>
-            <p>
-              Select an option below to continue.
-            </p>
+        <section className="modern-student-section">
+
+          <div className="modern-student-section-heading">
+
+            <div>
+              <span>
+                STUDENT SERVICES
+              </span>
+
+              <h2>
+                Quick access
+              </h2>
+            </div>
+
           </div>
 
 
-          <div className="student-card-grid">
+          <div className="modern-student-tools">
 
-            {/* Modules */}
+
+            {/* MY MODULES */}
+
             <button
-              className="student-card"
+              className="modern-student-tool"
               onClick={() => navigate("/student/modules")}
             >
-              <div className="card-icon blue-icon">
-                📚
+
+              <div className="modern-student-tool-icon blue">
+                ▦
               </div>
 
-              <div className="card-content">
-                <h4>My Modules</h4>
+              <div className="modern-student-tool-content">
+
+                <span>
+                  MODULES
+                </span>
+
+                <h3>
+                  My Modules
+                </h3>
+
                 <p>
                   View the modules you are registered for.
                 </p>
+
               </div>
 
-              <span className="card-arrow">
+              <span className="modern-student-tool-arrow">
                 →
               </span>
+
             </button>
 
 
-            {/* Attendance */}
+            {/* ATTENDANCE */}
+
             <button
-              className="student-card"
+              className="modern-student-tool"
               onClick={() => navigate("/student/attendance")}
             >
-              <div className="card-icon gold-icon">
-                📊
+
+              <div className="modern-student-tool-icon yellow">
+                ✓
               </div>
 
-              <div className="card-content">
-                <h4>My Attendance</h4>
+              <div className="modern-student-tool-content">
+
+                <span>
+                  ATTENDANCE
+                </span>
+
+                <h3>
+                  My Attendance
+                </h3>
+
                 <p>
-                  View your laboratory attendance records.
+                  View your attendance records and progress.
                 </p>
+
               </div>
 
-              <span className="card-arrow">
+              <span className="modern-student-tool-arrow">
                 →
               </span>
-            </button>
-       <button
-         className="dashboard-button"
-      onClick={() => navigate("/update-information")}
->
-  👤 Update Information
-</button>
 
-            {/* Laboratory Access */}
+            </button>
+
+
+            {/* LAB ACCESS */}
+
             <button
-              className="student-card"
+              className="modern-student-tool"
               onClick={() => navigate("/student/check-in")}
             >
-              <div className="card-icon red-icon">
-                🔐
+
+              <div className="modern-student-tool-icon green">
+                ◉
               </div>
 
-              <div className="card-content">
-                <h4>Laboratory Access</h4>
+              <div className="modern-student-tool-content">
+
+                <span>
+                  LABORATORY
+                </span>
+
+                <h3>
+                  Laboratory Access
+                </h3>
+
                 <p>
-                  Verify your identity and access the laboratory.
+                  Verify your identity before entering the lab.
                 </p>
+
               </div>
 
-              <span className="card-arrow">
+              <span className="modern-student-tool-arrow">
                 →
               </span>
+
+            </button>
+
+
+            {/* PROFILE */}
+
+            <button
+              className="modern-student-tool"
+              onClick={() => navigate("/update-information")}
+            >
+
+              <div className="modern-student-tool-icon purple">
+                ◌
+              </div>
+
+              <div className="modern-student-tool-content">
+
+                <span>
+                  ACCOUNT
+                </span>
+
+                <h3>
+                  My Profile
+                </h3>
+
+                <p>
+                  Update your student account information.
+                </p>
+
+              </div>
+
+              <span className="modern-student-tool-arrow">
+                →
+              </span>
+
             </button>
 
           </div>
@@ -170,63 +279,155 @@ function StudentDashboard() {
         </section>
 
 
-        {/* Information Section */}
-        <section className="student-info">
+        {/* =========================
+            STUDENT WORKFLOW
+        ========================== */}
 
-          <div className="info-header">
-            <h3>LabGuard Information</h3>
+        <section className="modern-student-workflow">
+
+          <div className="modern-student-workflow-heading">
+
+            <div>
+              <span>
+                LABGUARD WORKFLOW
+              </span>
+
+              <h2>
+                Stay on top of your attendance
+              </h2>
+            </div>
+
+            <div className="modern-student-status">
+              <span></span>
+              Student account active
+            </div>
+
           </div>
 
-          <div className="info-grid">
 
-            <div className="info-item">
-              <strong>Attendance</strong>
-              <p>
-                Your laboratory attendance is recorded when
-                you check in and out.
-              </p>
+          <div className="modern-student-workflow-grid">
+
+
+            <div className="modern-student-workflow-step">
+
+              <div className="modern-student-step-number">
+                01
+              </div>
+
+              <div>
+                <h3>
+                  View your modules
+                </h3>
+
+                <p>
+                  Check the modules you are currently registered for.
+                </p>
+              </div>
+
             </div>
 
-            <div className="info-item">
-              <strong>Laboratory Access</strong>
-              <p>
-                Use the laboratory access option to verify
-                your identity before entering the laboratory.
-              </p>
+
+            <div className="modern-student-workflow-line"></div>
+
+
+            <div className="modern-student-workflow-step">
+
+              <div className="modern-student-step-number">
+                02
+              </div>
+
+              <div>
+                <h3>
+                  Verify attendance
+                </h3>
+
+                <p>
+                  Use the available verification method when attending class.
+                </p>
+              </div>
+
             </div>
 
-            <div className="info-item">
-              <strong>Need Help?</strong>
-              <p>
-                Contact your lecturer or laboratory administrator
-                if you experience any problems.
-              </p>
+
+            <div className="modern-student-workflow-line"></div>
+
+
+            <div className="modern-student-workflow-step">
+
+              <div className="modern-student-step-number">
+                03
+              </div>
+
+              <div>
+                <h3>
+                  Monitor your progress
+                </h3>
+
+                <p>
+                  Review your attendance records and stay informed.
+                </p>
+              </div>
+
             </div>
 
           </div>
 
         </section>
+
+
+        {/* =========================
+            INFORMATION
+        ========================== */}
+
+        <section className="modern-student-info">
+
+          <div>
+
+            <span>
+              LABGUARD
+            </span>
+
+            <h2>
+              Your laboratory activity in one place
+            </h2>
+
+            <p>
+              LabGuard helps you keep track of your modules,
+              attendance and laboratory access through one
+              secure student portal.
+            </p>
+
+          </div>
+
+          <div className="modern-student-info-badge">
+            <span>●</span>
+            Secure Student Portal
+          </div>
+
+        </section>
+
 
       </main>
 
 
-      {/* Footer */}
-      <footer className="student-footer">
-        <p>
-          LabGuard • Laboratory Management System
-        </p>
+      {/* =========================
+          FOOTER
+      ========================== */}
+
+      <footer className="modern-student-footer">
 
         <span>
-          Tshwane University of Technology
+          © 2026 LabGuard
         </span>
+
+        <span>
+          Student Portal
+        </span>
+
       </footer>
 
     </div>
   );
-  
-
 }
 
 export default StudentDashboard;
-
-

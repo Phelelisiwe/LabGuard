@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import * as faceapi from "@vladmandic/face-api";
@@ -270,10 +269,6 @@ function BiometricRegistration() {
         return;
       }
 
-      /*
-       * If no biometric record exists yet, the student can still
-       * continue with registration.
-       */
       if (err.response?.status === 404) {
         setFaceStatus("Not Registered");
         setFingerprintStatus("Not Registered");
@@ -290,6 +285,17 @@ function BiometricRegistration() {
   /*
    * ---------------------------------------------------------
    * FACE REGISTRATION
+   *
+   * Improvements:
+   * 1. Detect all faces.
+   * 2. Require exactly one face.
+   * 3. Check detection confidence.
+   * 4. Check face size.
+   * 5. Check face position.
+   * 6. Capture 5 descriptors.
+   * 7. Check descriptor consistency.
+   * 8. Average the descriptors.
+   * 9. Save the averaged descriptor.
    * ---------------------------------------------------------
    */
 
@@ -299,7 +305,7 @@ function BiometricRegistration() {
       return;
     }
 
-    if (!videoRef.current) {
+    if (!videoRef.current || !cameraActive) {
       setError("Camera is not active.");
       return;
     }
@@ -309,35 +315,272 @@ function BiometricRegistration() {
       setError("");
       setMessage("");
 
-      const detection =
-        await faceapi
-          .detectSingleFace(
-            videoRef.current,
+      const video = videoRef.current;
+
+      const descriptors = [];
+
+      const numberOfCaptures = 5;
+
+      for (let i = 0; i < numberOfCaptures; i++) {
+        setMessage(
+          `Capturing face ${i + 1} of ${numberOfCaptures}. Please keep the student's face still.`
+        );
+
+        /*
+         * Detect ALL faces.
+         *
+         * This is important because we do not want to register
+         * a face while another person is also visible.
+         */
+
+        const detections = await faceapi
+          .detectAllFaces(
+            video,
             new faceapi.TinyFaceDetectorOptions({
               inputSize: 320,
-              scoreThreshold: 0.5,
+              scoreThreshold: 0.6,
             })
           )
           .withFaceLandmarks()
-          .withFaceDescriptor();
+          .withFaceDescriptors();
 
-      if (!detection) {
+        /*
+         * -----------------------------------------------------
+         * REQUIRE EXACTLY ONE FACE
+         * -----------------------------------------------------
+         */
+
+        if (detections.length === 0) {
+          setError(
+            "No face detected. Please position the student's face clearly in front of the camera."
+          );
+          return;
+        }
+
+        if (detections.length > 1) {
+          setError(
+            "More than one face was detected. Only the student being registered should be visible."
+          );
+          return;
+        }
+
+        const detection = detections[0];
+
+        /*
+         * -----------------------------------------------------
+         * CHECK DETECTION CONFIDENCE
+         * -----------------------------------------------------
+         */
+
+        if (detection.detection.score < 0.6) {
+          setError(
+            "Face detection confidence is too low. Please improve the lighting and face the camera directly."
+          );
+          return;
+        }
+
+        /*
+         * -----------------------------------------------------
+         * CHECK CAMERA DIMENSIONS
+         * -----------------------------------------------------
+         */
+
+        const videoWidth = video.videoWidth;
+        const videoHeight = video.videoHeight;
+
+        if (!videoWidth || !videoHeight) {
+          setError(
+            "Camera image is not ready. Please wait a moment and try again."
+          );
+          return;
+        }
+
+        /*
+         * -----------------------------------------------------
+         * CHECK FACE SIZE
+         * -----------------------------------------------------
+         */
+
+        const box = detection.detection.box;
+
+        const faceWidth = box.width;
+        const faceHeight = box.height;
+
+        const faceWidthRatio =
+          faceWidth / videoWidth;
+
+        const faceHeightRatio =
+          faceHeight / videoHeight;
+
+        if (
+          faceWidthRatio < 0.20 ||
+          faceHeightRatio < 0.20
+        ) {
+          setError(
+            "The student's face is too far from the camera. Please move closer."
+          );
+          return;
+        }
+
+        /*
+         * -----------------------------------------------------
+         * CHECK FACE POSITION
+         * -----------------------------------------------------
+         */
+
+        const faceCenterX =
+          box.x + box.width / 2;
+
+        const faceCenterY =
+          box.y + box.height / 2;
+
+        const imageCenterX =
+          videoWidth / 2;
+
+        const imageCenterY =
+          videoHeight / 2;
+
+        const horizontalDistance =
+          Math.abs(faceCenterX - imageCenterX) /
+          videoWidth;
+
+        const verticalDistance =
+          Math.abs(faceCenterY - imageCenterY) /
+          videoHeight;
+
+        if (
+          horizontalDistance > 0.25 ||
+          verticalDistance > 0.25
+        ) {
+          setError(
+            "Please position the student's face near the center of the camera."
+          );
+          return;
+        }
+
+        /*
+         * -----------------------------------------------------
+         * VALIDATE DESCRIPTOR
+         * -----------------------------------------------------
+         */
+
+        const descriptor = detection.descriptor;
+
+        if (!descriptor || descriptor.length !== 128) {
+          setError(
+            "Invalid face embedding detected. Please try again."
+          );
+          return;
+        }
+
+        descriptors.push(Array.from(descriptor));
+
+        /*
+         * Give the camera time to produce a new frame.
+         */
+
+        if (i < numberOfCaptures - 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 300)
+          );
+        }
+      }
+
+      /*
+       * ---------------------------------------------------------
+       * CHECK DESCRIPTOR CONSISTENCY
+       * ---------------------------------------------------------
+       */
+
+      const calculateDistance = (a, b) => {
+        let sum = 0;
+
+        for (let i = 0; i < 128; i++) {
+          const difference = a[i] - b[i];
+
+          sum += difference * difference;
+        }
+
+        return Math.sqrt(sum);
+      };
+
+      let totalDistance = 0;
+      let comparisons = 0;
+
+      for (let i = 0; i < descriptors.length; i++) {
+        for (let j = i + 1; j < descriptors.length; j++) {
+          totalDistance += calculateDistance(
+            descriptors[i],
+            descriptors[j]
+          );
+
+          comparisons++;
+        }
+      }
+
+      const averageDistance =
+        comparisons > 0
+          ? totalDistance / comparisons
+          : 0;
+
+      console.log(
+        "Average registration descriptor distance:",
+        averageDistance
+      );
+
+      /*
+       * If the descriptors vary too much, the capture was
+       * unstable.
+       */
+
+      if (averageDistance > 0.45) {
         setError(
-          "No face detected. Please position your face clearly in front of the camera."
+          "The face capture was inconsistent. Please keep the student's face still and try again."
         );
         return;
       }
 
-      const descriptor = detection.descriptor;
+      /*
+       * ---------------------------------------------------------
+       * CREATE AVERAGE FACE DESCRIPTOR
+       * ---------------------------------------------------------
+       */
 
-      const faceEmbedding = Array.from(descriptor).join(",");
+      const averageDescriptor =
+        new Array(128).fill(0);
 
-      if (descriptor.length !== 128) {
+      for (let i = 0; i < 128; i++) {
+        let total = 0;
+
+        for (const descriptor of descriptors) {
+          total += descriptor[i];
+        }
+
+        averageDescriptor[i] =
+          total / descriptors.length;
+      }
+
+      /*
+       * ---------------------------------------------------------
+       * VALIDATE FINAL DESCRIPTOR
+       * ---------------------------------------------------------
+       */
+
+      if (averageDescriptor.length !== 128) {
         setError(
-          "Invalid face embedding. Please try again."
+          "Failed to create a valid face embedding."
         );
         return;
       }
+
+      const faceEmbedding =
+        averageDescriptor.join(",");
+
+      /*
+       * ---------------------------------------------------------
+       * SEND FACE TO BACKEND
+       * ---------------------------------------------------------
+       */
 
       const authConfig = getAuthConfig();
 
@@ -355,7 +598,10 @@ function BiometricRegistration() {
         }
       );
 
-      console.log("Face registration response:", response.data);
+      console.log(
+        "Face registration response:",
+        response.data
+      );
 
       setFaceStatus("Registered");
 
@@ -364,10 +610,13 @@ function BiometricRegistration() {
       }
 
       setMessage(
-        "Face registered successfully. You can now register the fingerprint."
+        "Face registered successfully using multiple verified captures. You can now register the fingerprint."
       );
     } catch (err) {
-      console.error("Face registration error:", err);
+      console.error(
+        "Face registration error:",
+        err
+      );
 
       if (handleAuthenticationError(err)) {
         return;
@@ -412,7 +661,7 @@ function BiometricRegistration() {
 
       /*
        * STEP 1:
-       * Request WebAuthn registration options from backend.
+       * Request WebAuthn registration options.
        */
 
       const optionsResponse = await axios.get(
@@ -439,7 +688,8 @@ function BiometricRegistration() {
 
       /*
        * STEP 2:
-       * Ask the browser/phone to perform biometric authentication.
+       * Ask the browser/device to perform biometric
+       * authentication.
        */
 
       console.log(
@@ -462,7 +712,7 @@ function BiometricRegistration() {
 
       /*
        * STEP 3:
-       * Send the signed WebAuthn response to backend.
+       * Send WebAuthn response to backend.
        */
 
       const verifyAuthConfig = getAuthConfig();
@@ -500,10 +750,6 @@ function BiometricRegistration() {
         return;
       }
 
-      /*
-       * User cancelled the phone/browser biometric prompt.
-       */
-
       if (err.name === "NotAllowedError") {
         setError(
           "Fingerprint registration was cancelled or not allowed."
@@ -511,20 +757,12 @@ function BiometricRegistration() {
         return;
       }
 
-      /*
-       * Credential already exists on the device.
-       */
-
       if (err.name === "InvalidStateError") {
         setError(
           "This biometric credential may already be registered on this device."
         );
         return;
       }
-
-      /*
-       * WebAuthn browser compatibility error.
-       */
 
       if (
         err.name === "SecurityError" ||
@@ -535,10 +773,6 @@ function BiometricRegistration() {
         );
         return;
       }
-
-      /*
-       * Backend error.
-       */
 
       if (err.response) {
         console.error(
@@ -558,10 +792,6 @@ function BiometricRegistration() {
 
         return;
       }
-
-      /*
-       * Generic WebAuthn error.
-       */
 
       setError(
         err.message ||
@@ -872,13 +1102,11 @@ function BiometricRegistration() {
                     padding: "18px",
                     borderRadius: "8px",
                     background:
-                      fingerprintStatus ===
-                      "Registered"
+                      fingerprintStatus === "Registered"
                         ? "#e8f7ee"
                         : "#fff4e5",
                     border:
-                      fingerprintStatus ===
-                      "Registered"
+                      fingerprintStatus === "Registered"
                         ? "1px solid #b9e5c8"
                         : "1px solid #f0d19b",
                   }}

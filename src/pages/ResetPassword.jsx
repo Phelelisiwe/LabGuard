@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -14,9 +13,13 @@ function ResetPassword() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  // Controls the second confirmation
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     setMessage("");
@@ -32,6 +35,15 @@ function ResetPassword() {
       return;
     }
 
+    // Do NOT update the database yet.
+    // Show confirmation first.
+    setShowConfirmation(true);
+  };
+
+
+  const confirmPasswordChange = async () => {
+    setError("");
+    setMessage("");
     setLoading(true);
 
     try {
@@ -52,6 +64,8 @@ function ResetPassword() {
       setNewPassword("");
       setConfirmPassword("");
 
+      setShowConfirmation(false);
+
     } catch (err) {
       console.error("Reset password error:", err);
 
@@ -63,7 +77,10 @@ function ResetPassword() {
             .map((item) => item.msg || "Invalid field")
             .join(", ")
         );
-      } else if (typeof detail === "object" && detail !== null) {
+      } else if (
+        typeof detail === "object" &&
+        detail !== null
+      ) {
         setError(
           detail.msg || "Password reset failed."
         );
@@ -74,106 +91,256 @@ function ResetPassword() {
         );
       }
 
+      setShowConfirmation(false);
+
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="login-page">
-      <div className="login-container">
 
-        <div className="login-header">
-          <h1>LabGuard</h1>
-          <p>Laboratory Management System</p>
+  const cancelPasswordChange = () => {
+    setShowConfirmation(false);
+  };
+
+
+  return (
+    <div className="modern-reset-page">
+
+      <div className="modern-reset-container">
+
+        {/* Brand */}
+        <div className="modern-reset-brand">
+
+          <div className="modern-reset-logo">
+            LG
+          </div>
+
+          <div className="modern-reset-brand-text">
+            <strong>LabGuard</strong>
+            <span>Laboratory Management System</span>
+          </div>
+
         </div>
 
-        <div className="login-card">
 
-          <h2>Reset Password</h2>
+        {/* Card */}
+        <div className="modern-reset-card">
 
-          <p className="login-description">
-            Enter your new password below.
-          </p>
-
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="success-message">
-              {message}
-            </div>
-          )}
-
-          {!message && (
-            <form onSubmit={handleSubmit}>
-
-              <div className="form-group">
-                <label htmlFor="new-password">
-                  New Password
-                </label>
-
-                <input
-                  id="new-password"
-                  type="password"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) =>
-                    setNewPassword(e.target.value)
-                  }
-                  required
-                />
+          {!message && !showConfirmation && (
+            <>
+              <div className="modern-reset-icon">
+                🔐
               </div>
 
-              <div className="form-group">
-                <label htmlFor="confirm-password">
-                  Confirm Password
-                </label>
+              <div className="modern-reset-heading">
 
-                <input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) =>
-                    setConfirmPassword(e.target.value)
-                  }
-                  required
-                />
+                <span>PASSWORD SECURITY</span>
+
+                <h1>Reset Password</h1>
+
+                <p>
+                  Enter your new password below.
+                </p>
+
               </div>
+
+
+              {error && (
+                <div className="modern-reset-error">
+                  {error}
+                </div>
+              )}
+
+
+              <form onSubmit={handleSubmit}>
+
+                <div className="modern-reset-form-group">
+
+                  <label htmlFor="new-password">
+                    New Password
+                  </label>
+
+                  <input
+                    id="new-password"
+                    type="password"
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) =>
+                      setNewPassword(e.target.value)
+                    }
+                    required
+                  />
+
+                </div>
+
+
+                <div className="modern-reset-form-group">
+
+                  <label htmlFor="confirm-password">
+                    Confirm Password
+                  </label>
+
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) =>
+                      setConfirmPassword(e.target.value)
+                    }
+                    required
+                  />
+
+                </div>
+
+
+                <button
+                  type="submit"
+                  className="modern-reset-primary"
+                >
+                  Submit
+                  <span>→</span>
+                </button>
+
+              </form>
+
 
               <button
-                type="submit"
-                className="login-button"
-                disabled={loading}
+                type="button"
+                className="modern-reset-back"
+                onClick={() => navigate("/login")}
               >
-                {loading
-                  ? "Resetting..."
-                  : "Reset Password"}
+                ← Back to Login
               </button>
-
-            </form>
+            </>
           )}
 
+
+          {/* SECOND CONFIRMATION */}
+          {showConfirmation && (
+            <>
+              <div className="modern-reset-confirm-icon">
+                !
+              </div>
+
+              <div className="modern-reset-heading">
+
+                <span>CONFIRM ACTION</span>
+
+                <h1>Change Password?</h1>
+
+                <p>
+                  Are you sure you want to change your
+                  LabGuard password?
+                </p>
+
+              </div>
+
+
+              <div className="modern-reset-warning">
+
+                <div>🔒</div>
+
+                <p>
+                  Your current password will be replaced
+                  with the new password you entered.
+                </p>
+
+              </div>
+
+
+              <div className="modern-reset-confirm-actions">
+
+                <button
+                  type="button"
+                  className="modern-reset-cancel"
+                  onClick={cancelPasswordChange}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="modern-reset-confirm"
+                  onClick={confirmPasswordChange}
+                  disabled={loading}
+                >
+                  {loading
+                    ? "Changing..."
+                    : "Yes, Change Password"}
+                </button>
+
+              </div>
+
+            </>
+          )}
+
+
+          {/* SUCCESS */}
           {message && (
-            <button
-              type="button"
-              className="back-button"
-              onClick={() => navigate("/login")}
-            >
-              ← Back to Login
-            </button>
+            <>
+              <div className="modern-reset-success-icon">
+                ✓
+              </div>
+
+              <div className="modern-reset-heading">
+
+                <span>SUCCESS</span>
+
+                <h1>Password Changed</h1>
+
+                <p>
+                  Your password has been successfully
+                  updated.
+                </p>
+
+              </div>
+
+
+              <div className="modern-reset-success-box">
+
+                <div>✓</div>
+
+                <p>
+                  Your new password is now active.
+                  You can use it the next time you log in.
+                </p>
+
+              </div>
+
+
+              <button
+                type="button"
+                className="modern-reset-primary"
+                onClick={() => navigate("/login")}
+              >
+                Back to Login
+                <span>→</span>
+              </button>
+
+            </>
           )}
 
         </div>
+
+
+        {/* Footer */}
+        <footer className="modern-reset-footer">
+
+          <span>© 2026 LabGuard</span>
+
+          <span>
+            Laboratory Management System
+          </span>
+
+        </footer>
+
       </div>
+
     </div>
   );
 }
 
 export default ResetPassword;
-
-
