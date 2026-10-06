@@ -11,6 +11,7 @@ from app.routers.module import router as module_router
 from app.routers.student_module import router as student_module_router
 from app.routers.attendance import router as attendance_router
 from app.routers.employee import router as employee_router
+from app.routers.lecturer import router as lecturer_router
 
 
 # Models must be imported before create_all
@@ -55,6 +56,7 @@ app.include_router(admin_router)
 
 app.include_router(student_router)
 app.include_router(employee_router)
+app.include_router(lecturer_router)
 
 app.include_router(module_router)
 app.include_router(student_module_router)
