@@ -1,8 +1,8 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { startAuthentication } from "@simplewebauthn/browser";
+import * as faceapi from "@vladmandic/face-api";
 
 function StudentCheckIn() {
   const navigate = useNavigate();
@@ -11,16 +11,34 @@ function StudentCheckIn() {
   const [selectedModule, setSelectedModule] = useState("");
   const [attendance, setAttendance] = useState([]);
 
+  const [method, setMethod] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [faceLoading, setFaceLoading] = useState(false);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
 
   const token = localStorage.getItem("access_token");
+
+  const MODEL_URL =
+    "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
 
   useEffect(() => {
     fetchModules();
     fetchAttendance();
+
+    return () => {
+      stopCamera();
+    };
   }, []);
+
+  // =====================================================
+  // LOAD MODULES
+  // =====================================================
 
   const fetchModules = async () => {
     try {
@@ -39,6 +57,10 @@ function StudentCheckIn() {
       setError("Could not load your modules.");
     }
   };
+
+  // =====================================================
+  // LOAD ATTENDANCE
+  // =====================================================
 
   const fetchAttendance = async () => {
     try {
@@ -59,90 +81,246 @@ function StudentCheckIn() {
   };
 
   // =====================================================
-  // FINGERPRINT CHECK-IN
+  // LOAD FACE MODELS
   // =====================================================
 
-  const handleFingerprintCheckIn = async () => {
+  const loadFaceModels = async () => {
+    setFaceLoading(true);
+
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(
+        MODEL_URL
+      );
+
+      await faceapi.nets.faceLandmark68Net.loadFromUri(
+        MODEL_URL
+      );
+
+      await faceapi.nets.faceRecognitionNet.loadFromUri(
+        MODEL_URL
+      );
+    } catch (err) {
+      console.error(
+        "Face model loading error:",
+        err
+      );
+
+      throw new Error(
+        "Unable to load face recognition models."
+      );
+    } finally {
+      setFaceLoading(false);
+    }
+  };
+
+  // =====================================================
+  // START CAMERA
+  // =====================================================
+
+  const startCamera = async () => {
+    try {
+      setError("");
+      setMessage("");
+
+      await loadFaceModels();
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Camera access is not supported by this browser."
+        );
+      }
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: {
+              ideal: 640,
+            },
+            height: {
+              ideal: 480,
+            },
+            facingMode: "user",
+          },
+          audio: false,
+        });
+
+      streamRef.current = stream;
+
+      setCameraActive(true);
+
+      setMessage(
+        "Position your face inside the camera frame."
+      );
+    } catch (err) {
+      console.error("Camera error:", err);
+
+      if (err.name === "NotAllowedError") {
+        setError(
+          "Camera permission was denied."
+        );
+      } else if (err.name === "NotFoundError") {
+        setError(
+          "No camera was found."
+        );
+      } else {
+        setError(
+          err.message ||
+            "Unable to start the camera."
+        );
+      }
+    }
+  };
+
+  // =====================================================
+  // CONNECT VIDEO STREAM
+  // =====================================================
+
+  useEffect(() => {
+    if (
+      cameraActive &&
+      videoRef.current &&
+      streamRef.current
+    ) {
+      videoRef.current.srcObject =
+        streamRef.current;
+
+      videoRef.current
+        .play()
+        .catch((err) =>
+          console.error(
+            "Video playback error:",
+            err
+          )
+        );
+    }
+  }, [cameraActive]);
+
+  // =====================================================
+  // STOP CAMERA
+  // =====================================================
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current
+        .getTracks()
+        .forEach((track) => track.stop());
+
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setCameraActive(false);
+  };
+
+  // =====================================================
+  // FACE ATTENDANCE
+  // =====================================================
+
+  const handleFaceCheckIn = async () => {
     if (!selectedModule) {
       setError("Please select a module first.");
       return;
     }
 
     setLoading(true);
-    setMessage("");
     setError("");
+    setMessage("");
 
     try {
-      // Step 1: Ask backend for WebAuthn authentication options
-      const optionsResponse = await axios.get(
-        "https://labguard-dklp.onrender.com/biometric/attendance/fingerprint/options",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const optionsJSON = optionsResponse.data;
-
-      setMessage(
-        "Follow the fingerprint or biometric prompt on your phone."
-      );
-
-      // Step 2: Phone/browser performs biometric verification
-      const authenticationResponse = await startAuthentication({
-        optionsJSON,
-      });
-
-      setMessage(
-        "Biometric verified by your device. Confirming attendance..."
-      );
-
-      // Step 3: Backend verifies the WebAuthn assertion
-      const verificationResponse = await axios.post(
-        `https://labguard-dklp.onrender.com/biometric/attendance/fingerprint/verify?module_id=${Number(
-          selectedModule
-        )}`,
-        authenticationResponse,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (verificationResponse.data.success) {
-        setMessage(
-          verificationResponse.data.message ||
-            "Fingerprint verified. Attendance recorded successfully."
-        );
-
-        await fetchAttendance();
-      } else {
-        setError(
-          verificationResponse.data.message ||
-            "Fingerprint verification failed."
-        );
-        setMessage("");
+      if (!cameraActive) {
+        await startCamera();
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error(err);
 
-      // User cancelled the phone biometric prompt
+      setMessage("Detecting your face...");
+
+      const detection =
+        await faceapi
+          .detectSingleFace(
+            videoRef.current,
+            new faceapi.TinyFaceDetectorOptions({
+              inputSize: 224,
+              scoreThreshold: 0.5,
+            })
+          )
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+      if (!detection) {
+        setError(
+          "No face detected. Position your face clearly in the camera."
+        );
+
+        setMessage("");
+        return;
+      }
+
+      const descriptor =
+        detection.descriptor;
+
       if (
-        err?.name === "NotAllowedError" ||
-        err?.name === "AbortError"
+        !descriptor ||
+        descriptor.length !== 128
       ) {
         setError(
-          "Biometric verification was cancelled. Attendance was not recorded."
+          "Invalid face biometric detected."
         );
-      } else {
-        setError(
-          err.response?.data?.detail ||
-            "Fingerprint verification failed. Attendance was not recorded."
-        );
+
+        setMessage("");
+        return;
       }
+
+      const faceEmbedding =
+        Array.from(descriptor).join(",");
+
+      setMessage(
+        "Face detected. Verifying..."
+      );
+
+      const response =
+        await axios.post(
+          `https://labguard-dklp.onrender.com/biometric/attendance/face/verify?module_id=${Number(
+            selectedModule
+          )}`,
+          null,
+          {
+            params: {
+              face_embedding:
+                faceEmbedding,
+            },
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
+
+      if (response.data.success) {
+        setMessage(
+          response.data.message ||
+            "Face verified. Attendance recorded successfully."
+        );
+
+        stopCamera();
+
+        await fetchAttendance();
+      }
+
+    } catch (err) {
+      console.error(
+        "Face attendance error:",
+        err
+      );
+
+      setError(
+        err.response?.data?.detail ||
+          err.message ||
+          "Face verification failed."
+      );
 
       setMessage("");
     } finally {
@@ -151,49 +329,173 @@ function StudentCheckIn() {
   };
 
   // =====================================================
+  // FINGERPRINT ATTENDANCE
+  // =====================================================
+
+  const handleFingerprintCheckIn =
+    async () => {
+
+      if (!selectedModule) {
+        setError(
+          "Please select a module first."
+        );
+        return;
+      }
+
+      setLoading(true);
+      setMessage("");
+      setError("");
+
+      try {
+
+        const optionsResponse =
+          await axios.get(
+            "https://labguard-dklp.onrender.com/biometric/attendance/fingerprint/options",
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
+
+        const optionsJSON =
+          optionsResponse.data;
+
+        setMessage(
+          "Follow the fingerprint or biometric prompt on your phone."
+        );
+
+        const authenticationResponse =
+          await startAuthentication({
+            optionsJSON,
+          });
+
+        setMessage(
+          "Biometric verified by your device. Confirming attendance..."
+        );
+
+        const verificationResponse =
+          await axios.post(
+            `https://labguard-dklp.onrender.com/biometric/attendance/fingerprint/verify?module_id=${Number(
+              selectedModule
+            )}`,
+            authenticationResponse,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+                "Content-Type":
+                  "application/json",
+              },
+            }
+          );
+
+        if (
+          verificationResponse.data
+            .success
+        ) {
+          setMessage(
+            verificationResponse.data
+              .message ||
+              "Fingerprint verified. Attendance recorded successfully."
+          );
+
+          await fetchAttendance();
+        }
+
+      } catch (err) {
+
+        console.error(
+          "Fingerprint attendance error:",
+          err
+        );
+
+        if (
+          err?.name ===
+            "NotAllowedError" ||
+          err?.name ===
+            "AbortError"
+        ) {
+          setError(
+            "Biometric verification was cancelled. Attendance was not recorded."
+          );
+        } else {
+          setError(
+            err.response?.data?.detail ||
+              "Fingerprint verification failed."
+          );
+        }
+
+        setMessage("");
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  // =====================================================
   // CHECK-OUT
   // =====================================================
 
-  const handleCheckOut = async () => {
-    if (!selectedModule) {
-      setError("Please select a module first.");
-      return;
-    }
+  const handleCheckOut =
+    async () => {
 
-    setLoading(true);
-    setMessage("");
-    setError("");
+      if (!selectedModule) {
+        setError(
+          "Please select a module first."
+        );
+        return;
+      }
 
-    try {
-      const response = await axios.post(
-        "https://labguard-dklp.onrender.com/attendance/check-out",
-        {
-          module_id: Number(selectedModule),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      setLoading(true);
+      setMessage("");
+      setError("");
 
-      setMessage(response.data.message);
-      await fetchAttendance();
-    } catch (err) {
-      console.error(err);
-      setError(
-        err.response?.data?.detail ||
-          "Check-out failed."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+
+        const response =
+          await axios.post(
+            "https://labguard-dklp.onrender.com/attendance/check-out",
+            {
+              module_id:
+                Number(selectedModule),
+            },
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
+
+        setMessage(
+          response.data.message
+        );
+
+        await fetchAttendance();
+
+      } catch (err) {
+
+        console.error(err);
+
+        setError(
+          err.response?.data?.detail ||
+            "Check-out failed."
+        );
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <div className="attendance-page">
 
-      {/* Header */}
       <header className="attendance-header">
 
         <div className="attendance-brand">
@@ -206,21 +508,24 @@ function StudentCheckIn() {
 
           <div>
             <h1>LabGuard</h1>
-            <span>Laboratory Management System</span>
+            <span>
+              Laboratory Management System
+            </span>
           </div>
 
         </div>
 
         <button
           className="attendance-back-button"
-          onClick={() => navigate("/student")}
+          onClick={() =>
+            navigate("/student")
+          }
         >
           ← Back
         </button>
 
       </header>
 
-      {/* Main Content */}
       <main className="attendance-main">
 
         <div className="attendance-title">
@@ -232,13 +537,12 @@ function StudentCheckIn() {
           </h2>
 
           <span>
-            Verify your identity using a registered
-            biometric before recording attendance.
+            Select your module and verify your
+            identity using either Face or Fingerprint.
           </span>
 
         </div>
 
-        {/* Check In Card */}
         <section className="checkin-card">
 
           <div className="card-heading">
@@ -253,8 +557,8 @@ function StudentCheckIn() {
               </h3>
 
               <p>
-                Select the module you are attending
-                and verify your identity.
+                Choose one biometric verification
+                method.
               </p>
             </div>
 
@@ -282,9 +586,13 @@ function StudentCheckIn() {
 
               <select
                 value={selectedModule}
-                onChange={(e) =>
-                  setSelectedModule(e.target.value)
-                }
+                onChange={(e) => {
+                  setSelectedModule(
+                    e.target.value
+                  );
+                  setError("");
+                  setMessage("");
+                }}
                 disabled={loading}
               >
 
@@ -295,8 +603,14 @@ function StudentCheckIn() {
                 {modules.map((item) => (
 
                   <option
-                    key={item.id || item.module_id}
-                    value={item.id || item.module_id}
+                    key={
+                      item.id ||
+                      item.module_id
+                    }
+                    value={
+                      item.id ||
+                      item.module_id
+                    }
                   >
                     {item.module_code} -{" "}
                     {item.module_name}
@@ -308,26 +622,50 @@ function StudentCheckIn() {
 
             </div>
 
-            {/* Biometric Check-In */}
             <div className="attendance-actions">
 
               <button
                 className="checkin-button"
-                onClick={handleFingerprintCheckIn}
+                onClick={() => {
+                  setMethod("face");
+                  handleFaceCheckIn();
+                }}
                 disabled={
-                  loading || !selectedModule
+                  loading ||
+                  !selectedModule
                 }
               >
-                {loading
-                  ? "Verifying..."
+                {loading &&
+                method === "face"
+                  ? "Verifying Face..."
+                  : "👤 Verify Face & Check In"}
+              </button>
+
+              <button
+                className="checkin-button"
+                onClick={() => {
+                  setMethod("fingerprint");
+                  handleFingerprintCheckIn();
+                }}
+                disabled={
+                  loading ||
+                  !selectedModule
+                }
+              >
+                {loading &&
+                method === "fingerprint"
+                  ? "Verifying Fingerprint..."
                   : "🖐 Verify Fingerprint & Check In"}
               </button>
 
               <button
                 className="checkout-button"
-                onClick={handleCheckOut}
+                onClick={
+                  handleCheckOut
+                }
                 disabled={
-                  loading || !selectedModule
+                  loading ||
+                  !selectedModule
                 }
               >
                 ⇥ Check Out
@@ -335,17 +673,45 @@ function StudentCheckIn() {
 
             </div>
 
+            {cameraActive && (
+              <div className="biometric-camera">
+
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="biometric-video"
+                />
+
+                <button
+                  className="back-button"
+                  onClick={() => {
+                    stopCamera();
+                    setMethod("");
+                    setMessage("");
+                  }}
+                  disabled={loading}
+                >
+                  Cancel Camera
+                </button>
+
+              </div>
+            )}
+
             <div className="biometric-checkin-info">
 
               <p>
-                <strong>Secure biometric verification</strong>
+                <strong>
+                  Choose one verification method
+                </strong>
               </p>
 
               <span>
-                Your phone will verify your registered
-                fingerprint using secure WebAuthn
-                authentication. LabGuard does not receive
-                or store your fingerprint image.
+                You can check in using either your
+                registered face or your registered
+                phone biometric. You do not need to
+                use both.
               </span>
 
             </div>
@@ -354,13 +720,11 @@ function StudentCheckIn() {
 
         </section>
 
-        {/* Attendance History */}
         <section className="history-card">
 
           <div className="history-header">
 
             <div>
-
               <h3>
                 My Attendance
               </h3>
@@ -368,7 +732,6 @@ function StudentCheckIn() {
               <p>
                 Your laboratory attendance records.
               </p>
-
             </div>
 
             <div className="attendance-count">
@@ -397,50 +760,58 @@ function StudentCheckIn() {
 
                 {attendance.length > 0 ? (
 
-                  attendance.map((record) => (
+                  attendance.map(
+                    (record) => (
 
-                    <tr key={record.id}>
+                      <tr
+                        key={record.id}
+                      >
 
-                      <td>
+                        <td>
+                          <strong>
+                            {
+                              record.module_code ||
+                              record.module_name ||
+                              "Module"
+                            }
+                          </strong>
+                        </td>
 
-                        <strong>
-                          {record.module_code ||
-                            record.module_name ||
-                            "Module"}
-                        </strong>
+                        <td>
+                          {record.date ||
+                            "-"}
+                        </td>
 
-                      </td>
+                        <td>
+                          {record.time_in ||
+                            "-"}
+                        </td>
 
-                      <td>
-                        {record.date || "-"}
-                      </td>
+                        <td>
+                          {record.time_out ||
+                            "-"}
+                        </td>
 
-                      <td>
-                        {record.time_in || "-"}
-                      </td>
+                        <td>
 
-                      <td>
-                        {record.time_out || "-"}
-                      </td>
+                          <span
+                            className={
+                              record.status ===
+                              "Present"
+                                ? "status-present"
+                                : "status-absent"
+                            }
+                          >
+                            {record.status ||
+                              "Present"}
+                          </span>
 
-                      <td>
+                        </td>
 
-                        <span
-                          className={
-                            record.status === "Present"
-                              ? "status-present"
-                              : "status-absent"
-                          }
-                        >
-                          {record.status ||
-                            "Present"}
-                        </span>
+                      </tr>
 
-                      </td>
-
-                    </tr>
-
-                  ))
+                    )
+                  )
 
                 ) : (
 
@@ -467,7 +838,6 @@ function StudentCheckIn() {
 
       </main>
 
-      {/* Footer */}
       <footer className="attendance-footer">
 
         <span>
