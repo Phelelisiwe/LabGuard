@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import labguardStudent from "../assets/labguard-student.jpg.jpeg";
 
 import "./LandingPage.css";
 
