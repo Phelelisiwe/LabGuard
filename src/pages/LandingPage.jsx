@@ -1,534 +1,869 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import "./LandingPage.css";
+
+
+const slides = [
+  // =========================================================
+  // SLIDE 1 — YOUR LABGUARD PICTURE
+  // =========================================================
+  {
+    image: labguardStudent,
+    tag: "COMPUTER SYSTEMS ENGINEERING",
+    title: "Students building the future",
+    text: "A modern laboratory environment supporting practical learning, technology and innovation.",
+  },
+
+  // =========================================================
+  // SLIDE 2
+  // =========================================================
+  {
+    image:
+      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=2200&q=90",
+    tag: "STUDENT LIFE",
+    title: "A smarter laboratory experience",
+    text: "Secure laboratory access and accurate attendance in one simple platform.",
+  },
+
+  // =========================================================
+  // SLIDE 3 — YOUR LABGUARD PICTURE AGAIN
+  // =========================================================
+  {
+    image: labguardStudent,
+    tag: "SMART LABORATORY",
+    title: "Technology for modern learning",
+    text: "LabGuard connects students, technology and secure laboratory access.",
+  },
+
+  // =========================================================
+  // SLIDE 4
+  // =========================================================
+  {
+    image:
+      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=2200&q=90",
+    tag: "STUDENT FIRST",
+    title: "Built around students",
+    text: "Simple access, clear attendance and a modern university experience.",
+  },
+
+  // =========================================================
+  // SLIDE 5
+  // =========================================================
+  {
+    image:
+      "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=2200&q=90",
+    tag: "CONNECTED LEARNING",
+    title: "Technology that supports learning",
+    text: "Connect students, lecturers and laboratory attendance in one system.",
+  },
+
+  
+];
+
+const navItems = [
+  { id: "overview", label: "Overview" },
+  { id: "features", label: "Features" },
+  { id: "workflow", label: "How It Works" },
+  { id: "security", label: "Security" },
+  { id: "about", label: "About" },
+];
+
 
 function LandingPage() {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState(null);
 
-  const showSection = (section) => {
-    setActiveSection(
-      activeSection === section ? null : section
+  const [activeSection, setActiveSection] = useState("overview");
+  const [slide, setSlide] = useState(0);
+
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+
+
+  /* ================= PWA ================= */
+
+  useEffect(() => {
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+
+    setIsInstalled(standalone);
+
+
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
+
+
+    window.addEventListener(
+      "beforeinstallprompt",
+      handleBeforeInstallPrompt
+    );
+
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+
+  /* ================= ACTIVE SECTION ================= */
+
+  useEffect(() => {
+    const sections = navItems
+      .map((item) => document.getElementById(item.id))
+      .filter(Boolean);
+
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort(
+            (a, b) => b.intersectionRatio - a.intersectionRatio
+          );
+
+
+        if (visibleEntries.length > 0) {
+          setActiveSection(visibleEntries[0].target.id);
+        }
+      },
+      {
+        rootMargin: "-25% 0px -55% 0px",
+        threshold: [0.1, 0.25, 0.5],
+      }
+    );
+
+
+    sections.forEach((section) => observer.observe(section));
+
+
+    return () => observer.disconnect();
+  }, []);
+
+
+  /* ================= AUTO SLIDER ================= */
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlide((current) => (current + 1) % slides.length);
+    }, 5000);
+
+
+    return () => clearInterval(timer);
+  }, []);
+
+
+  /* ================= NAVIGATION ================= */
+
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
+
+  /* ================= INSTALL ================= */
+
+  const installLabGuard = async () => {
+    if (!installPrompt) {
+      setShowInstallHelp(true);
+      return;
+    }
+
+
+    installPrompt.prompt();
+
+
+    const { outcome } = await installPrompt.userChoice;
+
+
+    if (outcome === "accepted") {
+      setInstallPrompt(null);
+    }
+  };
+
+
+  /* ================= SLIDER CONTROLS ================= */
+
+  const nextSlide = () => {
+    setSlide((current) => (current + 1) % slides.length);
+  };
+
+
+  const previousSlide = () => {
+    setSlide(
+      (current) => (current - 1 + slides.length) % slides.length
     );
   };
 
+
   return (
-    <div className="landing-page">
+    <div className="lg-page">
 
-      {/* Navigation */}
-      <nav className="navbar">
-        <div className="logo">LabGuard</div>
 
-        <div className="nav-links">
+      {/* ================= NAVBAR ================= */}
 
-          <button onClick={() => showSection("about")}>
-            About
-          </button>
+      <header className="lg-navbar">
+        <div className="lg-navbar-inner">
 
-          <button onClick={() => showSection("features")}>
-            Features
-          </button>
-
-          <button onClick={() => showSection("how")}>
-            How It Works
-          </button>
-
-          <button onClick={() => showSection("contact")}>
-            Contact
-          </button>
 
           <button
-            className="login-nav-button"
-            onClick={() => navigate("/login")}
+            className="lg-brand"
+            onClick={() => scrollToSection("overview")}
           >
-            Login
+            <span className="lg-tut-mark">TUT</span>
+
+            <span className="lg-brand-text">
+              <strong>LabGuard</strong>
+              <small>Computer Systems Engineering</small>
+            </span>
           </button>
 
-        </div>
-      </nav>
+
+          <nav className="lg-nav">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                className={
+                  activeSection === item.id
+                    ? "lg-nav-link active"
+                    : "lg-nav-link"
+                }
+                onClick={() => scrollToSection(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
 
-      {/* Hero Section */}
-      <main className="hero">
+          <div className="lg-nav-actions">
 
-        <div className="hero-overlay"></div>
 
-        <div className="hero-content">
+            {!isInstalled && (
+              <button
+                className="lg-install-small"
+                onClick={installLabGuard}
+              >
+                Install
+              </button>
+            )}
 
-          <span className="hero-badge">
-            SECURE LABORATORY MANAGEMENT
-          </span>
-
-          <h1>
-            Welcome to <span>LabGuard</span>
-          </h1>
-
-          <p>
-            A secure laboratory access and management system
-            designed to manage users, attendance and laboratory
-            equipment from one centralized platform.
-          </p>
-
-          <div className="hero-buttons">
 
             <button
-              className="primary-button"
+              className="lg-login-button"
+              onClick={() => navigate("/login")}
+            >
+              Login
+            </button>
+
+
+          </div>
+
+
+        </div>
+      </header>
+
+
+
+      {/* =================================================
+          OVERVIEW
+          SLIDING PICTURES ONLY HERE
+          ================================================= */}
+
+      <section id="overview" className="lg-hero">
+
+
+        {slides.map((item, index) => (
+          <div
+            key={item.image}
+            className={
+              index === slide
+                ? "lg-hero-slide active"
+                : "lg-hero-slide"
+            }
+            style={{
+              backgroundImage: `url(${item.image})`,
+            }}
+          />
+        ))}
+
+
+        <div className="lg-hero-overlay"></div>
+
+
+        <div className="lg-hero-content">
+
+
+          <div className="lg-hero-tag">
+            TSHWANE UNIVERSITY OF TECHNOLOGY
+          </div>
+
+
+          <h1>
+            Smart laboratory
+            <span> access & attendance.</span>
+          </h1>
+
+
+          <p>{slides[slide].text}</p>
+
+
+          <div className="lg-hero-buttons">
+
+
+            <button
+              className="lg-primary-button"
               onClick={() => navigate("/login")}
             >
               Get Started
             </button>
 
+
             <button
-              className="secondary-button"
-              onClick={() => showSection("about")}
+              className="lg-outline-button"
+              onClick={() => scrollToSection("features")}
             >
-              Learn More
+              Explore LabGuard
             </button>
 
+
           </div>
+
 
         </div>
 
 
-        {/* Attendance Kiosk */}
-        <div className="hero-card">
+        <div className="lg-slide-caption">
+          <span>{slides[slide].tag}</span>
+          <strong>{slides[slide].title}</strong>
+        </div>
 
-          <div className="kiosk-header">
-            <div className="status-dot"></div>
-            <span>LabGuard Access Point</span>
+
+        <div className="lg-slider-controls">
+
+
+          <button
+            onClick={previousSlide}
+            aria-label="Previous slide"
+          >
+            ←
+          </button>
+
+
+          <div className="lg-slide-dots">
+
+
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                className={index === slide ? "active" : ""}
+                onClick={() => setSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+
+
           </div>
 
-          <div className="kiosk-screen">
 
-            <div className="shield">
-              ✓
-            </div>
+          <button
+            onClick={nextSlide}
+            aria-label="Next slide"
+          >
+            →
+          </button>
 
-            <h2>Verify Your Identity</h2>
+
+        </div>
+
+
+        <div className="lg-scroll-indicator">
+          <span></span>
+          Scroll to explore
+        </div>
+
+
+      </section>
+
+
+
+      {/* =================================================
+          FEATURES
+          NO PICTURES
+          ================================================= */}
+
+      <section id="features" className="lg-info-section">
+
+
+        <div className="lg-container">
+
+
+          <div className="lg-section-heading">
+
+
+            <span className="lg-section-label">
+              01 — FEATURES
+            </span>
+
+
+            <h2>
+              Everything you need in one place.
+            </h2>
+
 
             <p>
-              Face and fingerprint verification required
+              LabGuard simplifies laboratory access and attendance
+              for students and university staff.
             </p>
 
-            <div className="verification-step">
 
-              <span>✓</span>
+          </div>
+
+
+
+          <div className="lg-feature-grid">
+
+
+            <div className="lg-feature-card">
+              <div className="lg-card-number">01</div>
 
               <div>
-                <strong>Face Recognition</strong>
-                <small>Identity detected</small>
-              </div>
+                <h3>Secure Login</h3>
 
+                <p>
+                  One secure login for authorised LabGuard users.
+                </p>
+              </div>
             </div>
 
-            <div className="verification-step">
 
-              <span>✓</span>
+
+            <div className="lg-feature-card">
+              <div className="lg-card-number">02</div>
 
               <div>
-                <strong>Fingerprint</strong>
-                <small>Verification successful</small>
+                <h3>Biometric Verification</h3>
+
+                <p>
+                  Verify laboratory access using face or fingerprint.
+                </p>
               </div>
-
             </div>
 
-            <div className="access-granted">
-              ACCESS GRANTED
+
+
+            <div className="lg-feature-card">
+              <div className="lg-card-number">03</div>
+
+              <div>
+                <h3>Attendance Records</h3>
+
+                <p>
+                  Students can view their own attendance information.
+                </p>
+              </div>
             </div>
+
+
+
+            <div className="lg-feature-card">
+              <div className="lg-card-number">04</div>
+
+              <div>
+                <h3>Lecturer Monitoring</h3>
+
+                <p>
+                  Lecturers can monitor student attendance and
+                  academic participation.
+                </p>
+              </div>
+            </div>
+
 
           </div>
 
+
         </div>
 
-      </main>
+
+      </section>
 
 
-      {/* INFORMATION AREA */}
-      <div className="information-area">
 
-        {/* ABOUT */}
-        {activeSection === "about" && (
+      {/* =================================================
+          HOW IT WORKS
+          NO PICTURES
+          ================================================= */}
 
-          <section className="information-panel">
+      <section id="workflow" className="lg-workflow-section">
 
-            <button
-              className="close-information"
-              onClick={() => setActiveSection(null)}
-            >
-              ×
-            </button>
 
-            <span className="information-label">
-              ABOUT LABGUARD
+        <div className="lg-container">
+
+
+          <div className="lg-section-heading centered">
+
+
+            <span className="lg-section-label">
+              02 — HOW IT WORKS
             </span>
 
-            <h2>
-              A Smarter Way to Manage Laboratory Access
-            </h2>
-
-            <p>
-              LabGuard is a laboratory access and management
-              system designed to improve security, attendance
-              monitoring and equipment management.
-            </p>
-
-            <p>
-              The system provides authorised students and
-              employees with controlled access to laboratory
-              facilities while keeping important records in
-              one centralized system.
-            </p>
-
-            <div className="information-cards">
-
-              <div className="info-card">
-                <div className="info-icon">🔐</div>
-
-                <h3>Secure Access</h3>
-
-                <p>
-                  Laboratory access is controlled through
-                  registered user verification.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">📊</div>
-
-                <h3>Attendance</h3>
-
-                <p>
-                  Student attendance can be recorded and
-                  monitored through the system.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">📦</div>
-
-                <h3>Equipment</h3>
-
-                <p>
-                  Laboratory equipment borrowing and returns
-                  can be recorded and tracked.
-                </p>
-              </div>
-
-            </div>
-
-          </section>
-
-        )}
-
-
-        {/* FEATURES */}
-        {activeSection === "features" && (
-
-          <section className="information-panel">
-
-            <button
-              className="close-information"
-              onClick={() => setActiveSection(null)}
-            >
-              ×
-            </button>
-
-            <span className="information-label">
-              LABGUARD FEATURES
-            </span>
 
             <h2>
-              What Can LabGuard Do?
+              Simple from start to finish.
             </h2>
 
-            <p>
-              LabGuard provides several features designed to
-              support secure and efficient laboratory management.
-            </p>
-
-            <div className="information-cards">
-
-              <div className="info-card">
-                <div className="info-icon">🎓</div>
-
-                <h3>Student Management</h3>
-
-                <p>
-                  Manage registered students and provide them
-                  with controlled laboratory access.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">👨‍🏫</div>
-
-                <h3>Employee Management</h3>
-
-                <p>
-                  Support lecturers, assistant lecturers,
-                  cleaners and IT specialists.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">📅</div>
-
-                <h3>Attendance Management</h3>
-
-                <p>
-                  Record laboratory attendance and maintain
-                  attendance information for students and modules.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">📦</div>
-
-                <h3>Equipment Tracking</h3>
-
-                <p>
-                  Track equipment borrowing and returning using
-                  barcode or QR identification.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">🔒</div>
-
-                <h3>Access Control</h3>
-
-                <p>
-                  Verify registered users before laboratory access
-                  is granted.
-                </p>
-              </div>
-
-              <div className="info-card">
-                <div className="info-icon">📈</div>
-
-                <h3>Reports</h3>
-
-                <p>
-                  Provide authorised users with relevant
-                  attendance and equipment information.
-                </p>
-              </div>
-
-            </div>
-
-          </section>
-
-        )}
-
-
-        {/* HOW IT WORKS */}
-        {activeSection === "how" && (
-
-          <section className="information-panel">
-
-            <button
-              className="close-information"
-              onClick={() => setActiveSection(null)}
-            >
-              ×
-            </button>
-
-            <span className="information-label">
-              HOW IT WORKS
-            </span>
-
-            <h2>
-              From Registration to Laboratory Access
-            </h2>
 
             <p>
-              LabGuard uses a controlled process to ensure that
-              laboratory access is provided to registered users.
+              LabGuard makes laboratory attendance quick and easy.
             </p>
 
-            <div className="process-container">
 
-              <div className="process-step">
-
-                <div className="step-number">
-                  01
-                </div>
-
-                <div>
-                  <h3>Registration</h3>
-
-                  <p>
-                    The administrator registers students and
-                    employees and creates their accounts.
-                  </p>
-                </div>
-
-              </div>
+          </div>
 
 
-              <div className="process-step">
 
-                <div className="step-number">
-                  02
-                </div>
-
-                <div>
-                  <h3>Biometric Registration</h3>
-
-                  <p>
-                    The user's face and fingerprint are
-                    registered for identity verification.
-                  </p>
-                </div>
-
-              </div>
+          <div className="lg-workflow-line">
 
 
-              <div className="process-step">
+            <div className="lg-workflow-step">
+              <div className="lg-step-circle">01</div>
 
-                <div className="step-number">
-                  03
-                </div>
+              <h3>Login</h3>
 
-                <div>
-                  <h3>Identity Verification</h3>
-
-                  <p>
-                    When the user arrives at the laboratory,
-                    their identity is verified.
-                  </p>
-                </div>
-
-              </div>
-
-
-              <div className="process-step">
-
-                <div className="step-number">
-                  04
-                </div>
-
-                <div>
-                  <h3>Access & Attendance</h3>
-
-                  <p>
-                    Once verification is successful, laboratory
-                    access is granted and attendance is recorded.
-                  </p>
-                </div>
-
-              </div>
-
+              <p>
+                Sign in to your LabGuard account.
+              </p>
             </div>
 
-          </section>
-
-        )}
 
 
-        {/* CONTACT */}
-        {activeSection === "contact" && (
+            <div className="lg-workflow-step">
+              <div className="lg-step-circle">02</div>
 
-          <section className="information-panel">
+              <h3>Verify</h3>
 
-            <button
-              className="close-information"
-              onClick={() => setActiveSection(null)}
-            >
-              ×
-            </button>
-
-            <span className="information-label">
-              GET IN TOUCH
-            </span>
-
-            <h2>
-              Contact LabGuard__Phelelisiwe Zulu Developer
-            </h2>
-
-            <p>
-              For questions, feedback or information about
-              the LabGuard project, you can get in touch using
-              the details below.
-            </p>
-
-            <div className="contact-information">
-
-              <div className="contact-item">
-
-                <div className="contact-icon">
-                  ✉
-                </div>
-
-                <div>
-                  <h4>Email</h4>
-                  <p>
-                    stotodubai@gmail.com
-                  </p>
-                </div>
-
-              </div>
-
-
-              <div className="contact-item">
-
-                <div className="contact-icon">
-                  🎓
-                </div>
-
-                <div>
-                  <h4>Institution</h4>
-                  <p>
-                    Tshwane University of Technology
-                  </p>
-                </div>
-
-              </div>
-
-
-              <div className="contact-item">
-
-                <div className="contact-icon">
-                  💻
-                </div>
-
-                <div>
-                  <h4>Project</h4>
-                  <p>
-                    LabGuard – Laboratory Access and
-                    Management System
-                  </p>
-                </div>
-
-              </div>
-
+              <p>
+                Complete your biometric verification.
+              </p>
             </div>
 
-          </section>
-
-        )}
-
-      </div>
 
 
-      {/* Footer */}
-      <footer className="landing-footer">
+            <div className="lg-workflow-step">
+              <div className="lg-step-circle">03</div>
 
-        <div className="footer-logo">
-          LabGuard
+              <h3>Access</h3>
+
+              <p>
+                LabGuard confirms that you are authorised.
+              </p>
+            </div>
+
+
+
+            <div className="lg-workflow-step">
+              <div className="lg-step-circle">04</div>
+
+              <h3>Record</h3>
+
+              <p>
+                Your laboratory attendance is recorded.
+              </p>
+            </div>
+
+
+          </div>
+
+
         </div>
 
-        <p>
-          Laboratory Access and Management System
-        </p>
+
+      </section>
+
+
+
+      {/* =================================================
+          SECURITY
+          NO PICTURES
+          ================================================= */}
+
+      <section id="security" className="lg-security-section">
+
+
+        <div className="lg-container">
+
+
+          <div className="lg-security-layout">
+
+
+            <div className="lg-security-intro">
+
+
+              <span className="lg-section-label">
+                03 — SECURITY
+              </span>
+
+
+              <h2>
+                Secure access.
+                <br />
+                Reliable records.
+              </h2>
+
+
+              <p>
+                LabGuard is designed to help protect laboratory
+                access while maintaining accurate attendance
+                information.
+              </p>
+
+
+            </div>
+
+
+
+            <div className="lg-security-items">
+
+
+              <div className="lg-security-item">
+                <span>✓</span>
+
+                <div>
+                  <h3>Authorised Users</h3>
+
+                  <p>
+                    Only registered users can access the system.
+                  </p>
+                </div>
+              </div>
+
+
+
+              <div className="lg-security-item">
+                <span>✓</span>
+
+                <div>
+                  <h3>Biometric Verification</h3>
+
+                  <p>
+                    Face or fingerprint verification provides
+                    an additional layer of access control.
+                  </p>
+                </div>
+              </div>
+
+
+
+              <div className="lg-security-item">
+                <span>✓</span>
+
+                <div>
+                  <h3>Attendance Protection</h3>
+
+                  <p>
+                    Attendance information is recorded against
+                    the verified user.
+                  </p>
+                </div>
+              </div>
+
+
+            </div>
+
+
+          </div>
+
+
+        </div>
+
+
+      </section>
+
+
+
+      {/* =================================================
+          ABOUT
+          NO PICTURES
+          ================================================= */}
+
+      <section id="about" className="lg-about-section">
+
+
+        <div className="lg-container">
+
+
+          <div className="lg-about-content">
+
+
+            <div>
+
+
+              <span className="lg-section-label">
+                LABGUARD
+              </span>
+
+
+              <h2>
+                Designed for modern
+                <span> university laboratories.</span>
+              </h2>
+
+
+            </div>
+
+
+            <div className="lg-about-text">
+
+
+              <p>
+                LabGuard is a student-focused laboratory access
+                and attendance platform developed as part of
+                Computer Systems Engineering.
+              </p>
+
+
+              <button
+                className="lg-primary-button"
+                onClick={() => navigate("/login")}
+              >
+                Enter LabGuard
+              </button>
+
+
+            </div>
+
+
+          </div>
+
+
+        </div>
+
+
+      </section>
+
+
+
+      {/* =================================================
+          FOOTER
+          ================================================= */}
+
+      <footer className="lg-footer">
+
+
+        <div className="lg-footer-brand">
+
+
+          <span className="lg-footer-mark">TUT</span>
+
+
+          <div>
+            <strong>LabGuard</strong>
+
+            <small>
+              Computer Systems Engineering
+            </small>
+          </div>
+
+
+        </div>
+
 
         <p>
-          © 2026 LabGuard. All rights reserved.
+          Smart laboratory access & attendance.
         </p>
+
+
+        <button onClick={() => scrollToSection("overview")}>
+          Back to top ↑
+        </button>
+
 
       </footer>
+
+
+
+      {/* =================================================
+          INSTALL MODAL
+          ================================================= */}
+
+      {showInstallHelp && (
+        <div className="lg-modal-backdrop">
+
+
+          <div className="lg-install-modal">
+
+
+            <button
+              className="lg-modal-close"
+              onClick={() => setShowInstallHelp(false)}
+            >
+              ×
+            </button>
+
+
+            <div className="lg-modal-icon">＋</div>
+
+
+            <h3>Install LabGuard</h3>
+
+
+            <p>
+              Your browser does not currently provide the
+              automatic installation option.
+            </p>
+
+
+            <p>
+              Use your browser's
+              <strong> Install App </strong>
+              or
+              <strong> Add to Home Screen </strong>
+              option to install LabGuard.
+            </p>
+
+
+            <button
+              className="lg-primary-button lg-modal-button"
+              onClick={() => setShowInstallHelp(false)}
+            >
+              Got it
+            </button>
+
+
+          </div>
+
+
+        </div>
+      )}
+
 
     </div>
   );
 }
+
 
 export default LandingPage;

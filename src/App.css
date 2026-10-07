@@ -530,3 +530,32 @@
     width: 94%;
   }
 }
+.install-app-button {
+  margin-top: 18px;
+  padding: 12px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(0, 59, 112, 0.9);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.install-app-button:hover {
+  background: #003b70;
+  transform: translateY(-1px);
+}
+
+.install-app-button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+  .install-app-button {
+    width: 100%;
+    max-width: 280px;
+    margin-top: 14px;
+  }
+}
