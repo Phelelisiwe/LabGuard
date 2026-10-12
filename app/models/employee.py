@@ -56,8 +56,20 @@ class Employee(Base):
         server_default=func.now()
     )
 
-    # Modules assigned to this employee/lecturer
+        # Modules assigned to this employee/lecturer
     modules = relationship(
         "Module",
         back_populates="lecturer"
     )
+
+    # Timetable entries for this lecturer
+    timetable = relationship(
+        "Timetable",
+        back_populates="lecturer"
+    )
+    biometric = relationship(
+    "StudentBiometric",
+    back_populates="employee",
+    uselist=False,
+    cascade="all, delete-orphan"
+)

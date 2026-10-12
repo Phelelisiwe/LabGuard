@@ -1,4 +1,4 @@
-
+import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -133,11 +133,14 @@ def forgot_password(
         # CREATE RESET LINK
         # -------------------------------------------------
 
+        # This will grab your live frontend URL from Render, 
+        # or fallback to localhost if you are testing on your PC
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
         reset_link = (
-            "http://localhost:5173/reset-password"
+            f"{frontend_url}/reset-password"
             f"?token={reset_token}"
         )
-
 
         # -------------------------------------------------
         # SEND RESET EMAIL

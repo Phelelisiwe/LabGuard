@@ -1,4 +1,11 @@
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, String
+from sqlalchemy import (
+    Column,
+    Integer,
+    Text,
+    DateTime,
+    ForeignKey,
+    String
+)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -15,25 +22,25 @@ class StudentBiometric(Base):
         index=True
     )
 
+    # Either student_id OR employee_id is used.
     student_id = Column(
         Integer,
         ForeignKey("students.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         unique=True
     )
 
-    # =====================================================
-    # FACE BIOMETRIC
-    # =====================================================
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True
+    )
 
     face_embedding = Column(
         Text,
         nullable=True
     )
-
-    # =====================================================
-    # PHONE FINGERPRINT / WEBAUTHN
-    # =====================================================
 
     fingerprint_credential_id = Column(
         String(500),
@@ -51,19 +58,11 @@ class StudentBiometric(Base):
         default=0
     )
 
-    # =====================================================
-    # REGISTRATION STATUS
-    # =====================================================
-
     biometric_status = Column(
         String(30),
         nullable=False,
         default="incomplete"
     )
-
-    # =====================================================
-    # TIMESTAMPS
-    # =====================================================
 
     created_at = Column(
         DateTime,
@@ -76,11 +75,27 @@ class StudentBiometric(Base):
         onupdate=func.now()
     )
 
-    # =====================================================
-    # RELATIONSHIP
-    # =====================================================
-
     student = relationship(
         "Student",
         back_populates="biometric"
     )
+
+    employee = relationship(
+        "Employee",
+        back_populates="biometric"
+    )
+
+    @property
+    def has_face(self):
+        return bool(self.face_embedding)
+
+    @property
+    def has_fingerprint(self):
+        return bool(self.fingerprint_credential_id)
+
+    @property
+    def is_ready(self):
+        return (
+            self.has_face
+            or self.has_fingerprint
+        )

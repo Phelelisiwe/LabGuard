@@ -1,13 +1,30 @@
-from sqlalchemy import Column, Integer, String, Date, Time, DateTime, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    Time,
+    DateTime,
+    ForeignKey
+)
 from sqlalchemy.orm import relationship
 
 from app.database import Base
 
 
+# =========================================================
+# MODULE
+# =========================================================
+
 class Module(Base):
+
     __tablename__ = "modules"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
 
     module_code = Column(
         String(20),
@@ -20,14 +37,11 @@ class Module(Base):
         nullable=False
     )
 
-    # Level/year in which the module is offered
     level = Column(
         Integer,
         nullable=False
     )
 
-    # Lecturer responsible for this module
-    # Can be empty until the Super Admin assigns a lecturer
     lecturer_id = Column(
         Integer,
         ForeignKey("employees.id"),
@@ -37,6 +51,11 @@ class Module(Base):
     lecturer = relationship(
         "Employee",
         back_populates="modules"
+    )
+
+    timetable = relationship(
+        "Timetable",
+        back_populates="module"
     )
 
     student_modules = relationship(
@@ -52,10 +71,19 @@ class Module(Base):
     )
 
 
+# =========================================================
+# STUDENT MODULE
+# =========================================================
+
 class StudentModule(Base):
+
     __tablename__ = "student_modules"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
 
     student_id = Column(
         Integer,
@@ -80,10 +108,19 @@ class StudentModule(Base):
     )
 
 
+# =========================================================
+# ATTENDANCE
+# =========================================================
+
 class Attendance(Base):
+
     __tablename__ = "attendance"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
 
     student_id = Column(
         Integer,
