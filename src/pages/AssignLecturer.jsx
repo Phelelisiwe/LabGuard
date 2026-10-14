@@ -100,6 +100,9 @@ function AssignLecturer() {
       if (!grouped.has(entry.module_id)) {
         grouped.set(entry.module_id, {
           id: entry.module_id,
+          module_name: entry.module?.module_name || entry.module_name || "",
+          module_code: entry.module?.module_code || entry.module_code || "",
+          level: entry.module?.level ?? entry.level ?? null,
           sessions: [],
           lecturerIds: new Set(),
         });
@@ -434,4 +437,5 @@ function AssignLecturer() {
 }
 
 export default AssignLecturer;
+
 
