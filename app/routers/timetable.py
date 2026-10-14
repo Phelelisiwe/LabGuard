@@ -342,6 +342,104 @@ def get_current_timetable(
         )
 
 
+# ASSIGN A LECTURER TO ALL SESSIONS OF A MODULE
+@router.put(
+    "/module/{module_id}/assign-lecturer",
+    response_model=list[TimetableResponse],
+)
+def assign_lecturer_to_module(
+    module_id: int,
+    lecturer_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    require_super_admin(current_user)
+
+    try:
+        # Load every active session for the selected module.
+        entries = (
+            db.query(Timetable)
+            .filter(
+                Timetable.module_id == module_id,
+                Timetable.active.is_(True),
+            )
+            .order_by(Timetable.day_of_week, Timetable.start_time)
+            .all()
+        )
+
+        if not entries:
+            raise HTTPException(
+                status_code=404,
+                detail="No active timetable sessions were found for this module.",
+            )
+
+        # Do not silently overwrite another lecturer's assignment.
+        if any(
+            entry.lecturer_id is not None
+            and entry.lecturer_id != lecturer_id
+            for entry in entries
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This module already has a different lecturer assigned. "
+                    "Remove the existing module assignment before reassigning it."
+                ),
+            )
+
+        validate_lecturer(db, lecturer_id)
+
+        # Check every session against the lecturer's timetable across
+        # all other modules and levels before changing anything.
+        for entry in entries:
+            conflict = (
+                db.query(Timetable)
+                .filter(
+                    Timetable.lecturer_id == lecturer_id,
+                    Timetable.active.is_(True),
+                    Timetable.module_id != module_id,
+                    Timetable.day_of_week == entry.day_of_week,
+                    Timetable.start_time < entry.end_time,
+                    Timetable.end_time > entry.start_time,
+                )
+                .first()
+            )
+
+            if conflict:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"The lecturer has a conflicting class on "
+                        f"{entry.day_of_week}, "
+                        f"{entry.start_time.strftime('%H:%M')}–"
+                        f"{entry.end_time.strftime('%H:%M')}. "
+                        "The module was not assigned."
+                    ),
+                )
+
+        # All sessions have passed validation. Assign the lecturer
+        # to the entire module in one database transaction.
+        for entry in entries:
+            entry.lecturer_id = lecturer_id
+
+        db.commit()
+
+        for entry in entries:
+            db.refresh(entry)
+
+        return entries
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except SQLAlchemyError:
+        db.rollback()
+        logger.exception("Database error assigning lecturer to module")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not assign lecturer to the module. Check the backend logs.",
+        )
+
 # ASSIGN A LECTURER
 @router.put(
     "/{timetable_id}/assign-lecturer",
