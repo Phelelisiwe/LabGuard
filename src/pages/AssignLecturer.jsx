@@ -1,4 +1,4 @@
-
+﻿
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -287,7 +287,7 @@ function AssignLecturer() {
                     <option value="">-- Select Module --</option>
                     {unassignedModules.map((module) => (
                       <option key={module.id} value={String(module.id)}>
-                        Module {module.id}
+                        {module.module_name || module.sessions?.[0]?.module?.module_name || `Module ${module.id}`}
                       </option>
                     ))}
                   </select>
@@ -434,3 +434,4 @@ function AssignLecturer() {
 }
 
 export default AssignLecturer;
+
