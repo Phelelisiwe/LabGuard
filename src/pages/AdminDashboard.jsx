@@ -172,6 +172,24 @@ function AdminDashboard() {
 
           </div>
 
+<div className="admin-card">
+  <div className="admin-card-icon">🔐</div>
+
+  <h2>Biometric Registration</h2>
+
+  <p>
+    Register student and employee faces and request physical
+    fingerprint enrollment for laboratory access.
+  </p>
+
+  <button
+    className="dashboard-button"
+    onClick={() => navigate("/admin/biometric")}
+  >
+    Open Biometric Registration
+  </button>
+</div>
+
 
           {/* Delete User */}
 
