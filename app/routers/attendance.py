@@ -1,3 +1,6 @@
+import math
+from pydantic import BaseModel, Field
+from app.models.attendance_session import AttendanceSession
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -192,3 +195,144 @@ def get_student_attendance(
     ).all()
 
     return attendance_records
+
+# =========================================================
+# GPS WEBSITE ATTENDANCE
+# =========================================================
+
+class GPSCheckInPayload(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+def calculate_distance_metres(
+    lat1: float,
+    lon1: float,
+    lat2: float,
+    lon2: float,
+) -> float:
+    """Calculate the distance between two GPS coordinates."""
+    earth_radius = 6_371_000
+
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lon = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1_rad)
+        * math.cos(lat2_rad)
+        * math.sin(delta_lon / 2) ** 2
+    )
+
+    return earth_radius * 2 * math.atan2(
+        math.sqrt(a),
+        math.sqrt(max(0.0, 1.0 - a)),
+    )
+
+
+@router.post("/gps/check-in")
+def gps_check_in(
+    payload: GPSCheckInPayload,
+    current_user=Depends(require_role("student")),
+    db: Session = Depends(get_db),
+):
+    student_id = current_user["user_id"]
+    now = datetime.now()
+    today = now.date()
+
+    # Find the active session for today.
+    session = db.query(AttendanceSession).filter(
+        AttendanceSession.status == "active",
+        AttendanceSession.session_date == today,
+    ).order_by(
+        AttendanceSession.opened_at.desc()
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=400,
+            detail="There is no active attendance session.",
+        )
+
+    if session.latitude is None or session.longitude is None:
+        raise HTTPException(
+            status_code=400,
+            detail="The classroom location has not been saved.",
+        )
+
+    # Confirm the student is registered for this module.
+    registration = db.query(StudentModule).filter(
+        StudentModule.student_id == student_id,
+        StudentModule.module_id == session.module_id,
+    ).first()
+
+    if not registration:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not registered for this module.",
+        )
+
+    # Compare the student's location with the session location.
+    distance = calculate_distance_metres(
+        session.latitude,
+        session.longitude,
+        payload.latitude,
+        payload.longitude,
+    )
+
+    # GPS proximity alone cannot guarantee that someone is inside.
+    # Use a conservative radius and test its accuracy at your lab.
+    allowed_distance = 10
+
+    if distance > allowed_distance:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"You are approximately {round(distance, 1)} metres "
+                "from the classroom location. Move closer to check in."
+            ),
+        )
+
+    # Prevent duplicate attendance for the same module and date.
+    existing = db.query(Attendance).filter(
+        Attendance.student_id == student_id,
+        Attendance.module_id == session.module_id,
+        Attendance.date == session.session_date,
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="You have already been marked present for this class.",
+        )
+
+    attendance = Attendance(
+        student_id=student_id,
+        module_id=session.module_id,
+        date=session.session_date,
+        time_in=now,
+    )
+
+    try:
+        db.add(attendance)
+        db.commit()
+        db.refresh(attendance)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not record GPS attendance.",
+        )
+
+    return {
+        "success": True,
+        "message": "GPS attendance recorded successfully.",
+        "attendance_id": attendance.id,
+        "module_id": session.module_id,
+        "date": str(attendance.date),
+        "time_in": str(attendance.time_in),
+        "distance_metres": round(distance, 2),
+        "method": "gps",
+    }

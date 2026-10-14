@@ -16,6 +16,7 @@ from app.models.employee import Employee
 from app.models.biometric import StudentBiometric
 from app.models.attendance import Attendance, StudentModule
 from app.models.attendance_session import AttendanceSession
+from app.models.timetable import Timetable
 from app.schemas.biometric import FaceRegistration, FingerprintRegistration
 from app.dependencies import require_role
 
@@ -34,9 +35,13 @@ from webauthn.helpers.structs import (
     PublicKeyCredentialDescriptor,
 )
 
+
 router = APIRouter(prefix="/biometric", tags=["Biometric Registration"])
 
-RP_ID = os.getenv("WEBAUTHN_RP_ID", "labguard-1-pwhe.onrender.com")
+RP_ID = os.getenv(
+    "WEBAUTHN_RP_ID",
+    "labguard-1-pwhe.onrender.com",
+)
 ORIGIN = os.getenv(
     "WEBAUTHN_ORIGIN",
     "https://labguard-1-pwhe.onrender.com",
@@ -72,6 +77,7 @@ def get_webauthn_config(request: Request):
 def options_json_response(options):
     try:
         result = options_to_json(options)
+
         if isinstance(result, str):
             result = json.loads(result)
 
@@ -243,6 +249,8 @@ def save_attendance(student_id: int, session, method: str, db: Session):
     return {
         "success": True,
         "verified": True,
+        "authorized": True,
+        "door_action": "keep_locked",
         "method": method,
         "message": "Fingerprint or face verified and attendance recorded.",
         "student_id": student_id,
@@ -265,7 +273,9 @@ def register_face(
     current_user=Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
@@ -276,8 +286,15 @@ def register_face(
     face, fingerprint, status = biometric_status(biometric)
     biometric.biometric_status = status
 
-    db.commit()
-    db.refresh(biometric)
+    try:
+        db.commit()
+        db.refresh(biometric)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the student's face registration.",
+        )
 
     return {
         "success": True,
@@ -293,6 +310,7 @@ def register_face(
 
 # =========================================================
 # STUDENT WEBAUTHN FINGERPRINT REGISTRATION
+# This is browser-based authentication, not the FPM10A sensor.
 # =========================================================
 
 @router.get("/students/{student_id}/fingerprint/options")
@@ -302,7 +320,9 @@ def generate_fingerprint_registration_options(
     current_user=Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
@@ -353,7 +373,9 @@ def verify_fingerprint_registration(
     current_user=Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
@@ -395,8 +417,16 @@ def verify_fingerprint_registration(
     face, fingerprint, status = biometric_status(biometric)
     biometric.biometric_status = status
 
-    db.commit()
-    db.refresh(biometric)
+    try:
+        db.commit()
+        db.refresh(biometric)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the fingerprint registration.",
+        )
+
     registration_challenges.pop(f"student_{student_id}", None)
 
     return {
@@ -422,7 +452,9 @@ def get_biometric_status(
     current_user=Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
@@ -439,16 +471,13 @@ def get_biometric_status(
         "fingerprint_registered": fingerprint,
         "physical_fingerprint_registered": has_physical_fingerprint(biometric),
         "fingerprint_sensor_slot": (
-            getattr(biometric, "fingerprint_sensor_slot", None)
-            if biometric else None
+            biometric.fingerprint_sensor_slot if biometric else None
         ),
         "fingerprint_enrollment_pending": (
-            getattr(biometric, "fingerprint_enrollment_pending", False)
-            if biometric else False
+            biometric.fingerprint_enrollment_pending if biometric else False
         ),
         "fingerprint_revocation_pending": (
-            getattr(biometric, "fingerprint_revocation_pending", False)
-            if biometric else False
+            biometric.fingerprint_revocation_pending if biometric else False
         ),
         "biometric_ready": face or fingerprint,
         "biometric_complete": face or fingerprint,
@@ -598,12 +627,14 @@ def verify_fingerprint_attendance(
         )
 
     biometric.fingerprint_sign_count = verification.new_sign_count
+
     result = save_attendance(
         student_id,
         session,
         "fingerprint",
         db,
     )
+
     authentication_challenges.pop(student_id, None)
     return result
 
@@ -635,7 +666,9 @@ def verify_face_attendance(
         registered = [
             float(value) for value in biometric.face_embedding.split(",")
         ]
-        submitted = [float(value) for value in face_embedding.split(",")]
+        submitted = [
+            float(value) for value in face_embedding.split(",")
+        ]
     except (ValueError, AttributeError):
         raise HTTPException(
             status_code=400,
@@ -682,7 +715,10 @@ def register_employee_face(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found.")
 
-    if employee.role not in ("lecturer", "assistant lecturer"):
+    if employee.role.strip().lower() not in (
+        "lecturer",
+        "assistant lecturer",
+    ):
         raise HTTPException(
             status_code=400,
             detail="Biometric attendance is only available for lecturers and assistant lecturers.",
@@ -694,8 +730,15 @@ def register_employee_face(
     face, fingerprint, status = biometric_status(biometric)
     biometric.biometric_status = status
 
-    db.commit()
-    db.refresh(biometric)
+    try:
+        db.commit()
+        db.refresh(biometric)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the employee face registration.",
+        )
 
     return {
         "success": True,
@@ -711,6 +754,7 @@ def register_employee_face(
 
 # =========================================================
 # EMPLOYEE WEBAUTHN FINGERPRINT REGISTRATION
+# This is browser-based authentication, not the FPM10A sensor.
 # =========================================================
 
 @router.get("/employees/{employee_id}/fingerprint/options")
@@ -727,7 +771,10 @@ def generate_employee_fingerprint_registration_options(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found.")
 
-    if employee.role not in ("lecturer", "assistant lecturer"):
+    if employee.role.strip().lower() not in (
+        "lecturer",
+        "assistant lecturer",
+    ):
         raise HTTPException(
             status_code=400,
             detail="Fingerprint registration is only available for lecturers and assistant lecturers.",
@@ -786,7 +833,10 @@ def verify_employee_fingerprint_registration(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found.")
 
-    if employee.role not in ("lecturer", "assistant lecturer"):
+    if employee.role.strip().lower() not in (
+        "lecturer",
+        "assistant lecturer",
+    ):
         raise HTTPException(
             status_code=400,
             detail="Fingerprint registration is only available for lecturers and assistant lecturers.",
@@ -829,8 +879,16 @@ def verify_employee_fingerprint_registration(
     face, fingerprint, status = biometric_status(biometric)
     biometric.biometric_status = status
 
-    db.commit()
-    db.refresh(biometric)
+    try:
+        db.commit()
+        db.refresh(biometric)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the employee fingerprint registration.",
+        )
+
     registration_challenges.pop(f"employee_{employee_id}", None)
 
     return {
@@ -871,14 +929,20 @@ def get_employee_biometric_status(
 
     return {
         "employee_id": employee_id,
+        "employee_number": employee.employee_number,
         "employee_name": f"{employee.first_name} {employee.last_name}",
         "role": employee.role,
         "face_registered": face,
         "fingerprint_registered": fingerprint,
         "physical_fingerprint_registered": has_physical_fingerprint(biometric),
         "fingerprint_sensor_slot": (
-            getattr(biometric, "fingerprint_sensor_slot", None)
-            if biometric else None
+            biometric.fingerprint_sensor_slot if biometric else None
+        ),
+        "fingerprint_enrollment_pending": (
+            biometric.fingerprint_enrollment_pending if biometric else False
+        ),
+        "fingerprint_revocation_pending": (
+            biometric.fingerprint_revocation_pending if biometric else False
         ),
         "biometric_ready": face or fingerprint,
         "biometric_complete": face or fingerprint,
@@ -887,8 +951,7 @@ def get_employee_biometric_status(
 
 
 # =========================================================
-# PHYSICAL FPM10A FINGERPRINT SENSOR - ESP32 API
-# All device routes require X-Device-Token.
+# PHYSICAL FPM10A FINGERPRINT ENROLLMENT
 # =========================================================
 
 @router.post("/students/{student_id}/fingerprint/sensor/enroll")
@@ -897,7 +960,9 @@ def request_physical_fingerprint_enrollment(
     current_user=Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
@@ -910,14 +975,30 @@ def request_physical_fingerprint_enrollment(
             detail="This student already has a physical fingerprint registered.",
         )
 
-    if getattr(biometric, "fingerprint_revocation_pending", False):
+    if biometric.fingerprint_revocation_pending:
         raise HTTPException(
             status_code=409,
             detail="A fingerprint deletion is still pending on the sensor.",
         )
 
+    if biometric.fingerprint_enrollment_pending:
+        return {
+            "success": True,
+            "student_id": student_id,
+            "fingerprint_enrollment_pending": True,
+            "message": "Student fingerprint enrollment is already pending.",
+        }
+
     biometric.fingerprint_enrollment_pending = True
-    db.commit()
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not request student fingerprint enrollment.",
+        )
 
     return {
         "success": True,
@@ -925,6 +1006,69 @@ def request_physical_fingerprint_enrollment(
         "student_id": student_id,
         "fingerprint_registered": False,
         "fingerprint_enrollment_pending": True,
+    }
+
+
+@router.post("/employees/{employee_number}/fingerprint/sensor/enroll")
+def request_employee_fingerprint_enrollment(
+    employee_number: str,
+    current_user=Depends(require_role("super_admin")),
+    db: Session = Depends(get_db),
+):
+    employee = db.query(Employee).filter(
+        Employee.employee_number == employee_number
+    ).first()
+
+    if employee is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found.",
+        )
+
+    if employee.role.strip().lower() != "lecturer":
+        raise HTTPException(
+            status_code=400,
+            detail="Only lecturers can use this enrollment endpoint.",
+        )
+
+    biometric = get_biometric_by_employee(employee.id, db)
+
+    if biometric.fingerprint_sensor_slot is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="This lecturer already has a physical fingerprint registered.",
+        )
+
+    if biometric.fingerprint_revocation_pending:
+        raise HTTPException(
+            status_code=409,
+            detail="Fingerprint revocation is pending.",
+        )
+
+    if biometric.fingerprint_enrollment_pending:
+        return {
+            "success": True,
+            "employee_number": employee.employee_number,
+            "fingerprint_enrollment_pending": True,
+            "message": "Enrollment is already pending.",
+        }
+
+    biometric.fingerprint_enrollment_pending = True
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not request lecturer fingerprint enrollment.",
+        )
+
+    return {
+        "success": True,
+        "employee_number": employee.employee_number,
+        "fingerprint_enrollment_pending": True,
+        "message": "Lecturer fingerprint enrollment requested.",
     }
 
 
@@ -938,7 +1082,6 @@ def get_pending_sensor_enrollment(
     biometric = db.query(StudentBiometric).filter(
         StudentBiometric.fingerprint_enrollment_pending.is_(True),
         StudentBiometric.fingerprint_sensor_slot.is_(None),
-        StudentBiometric.student_id.isnot(None),
     ).order_by(StudentBiometric.id.asc()).first()
 
     if biometric is None:
@@ -948,24 +1091,57 @@ def get_pending_sensor_enrollment(
             "message": "No fingerprint enrollment is waiting.",
         }
 
-    student = db.query(Student).filter(
-        Student.id == biometric.student_id
-    ).first()
+    if biometric.student_id is not None:
+        student = db.query(Student).filter(
+            Student.id == biometric.student_id
+        ).first()
 
-    if student is None:
-        raise HTTPException(
-            status_code=409,
-            detail="The pending enrollment references a missing student.",
-        )
+        if student is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Pending enrollment references a missing student.",
+            )
 
-    return {
-        "success": True,
-        "pending": True,
-        "student_id": student.id,
-        "student_number": student.student_number,
-        "student_name": f"{student.first_name} {student.last_name}",
-        "message": "Enroll this student's fingerprint on the sensor.",
-    }
+        return {
+            "success": True,
+            "pending": True,
+            "person_type": "student",
+            "student_id": student.id,
+            "student_number": student.student_number,
+            "person_name": f"{student.first_name} {student.last_name}",
+            "message": "Enroll this student's fingerprint on the sensor.",
+        }
+
+    if biometric.employee_id is not None:
+        employee = db.query(Employee).filter(
+            Employee.id == biometric.employee_id
+        ).first()
+
+        if employee is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Pending enrollment references a missing employee.",
+            )
+
+        if employee.role.strip().lower() != "lecturer":
+            raise HTTPException(
+                status_code=400,
+                detail="Only lecturers can use physical fingerprint enrollment.",
+            )
+
+        return {
+            "success": True,
+            "pending": True,
+            "person_type": "employee",
+            "employee_number": employee.employee_number,
+            "person_name": f"{employee.first_name} {employee.last_name}",
+            "message": "Enroll this lecturer's fingerprint on the sensor.",
+        }
+
+    raise HTTPException(
+        status_code=409,
+        detail="Enrollment is not linked to a student or employee.",
+    )
 
 
 @router.post("/device/fingerprint/enrollment/complete")
@@ -977,34 +1153,102 @@ def complete_sensor_enrollment(
     verify_esp32_token(x_device_token)
 
     try:
-        student_id = int(data["student_id"])
         sensor_slot = int(data["sensor_slot"])
     except (KeyError, TypeError, ValueError):
         raise HTTPException(
             status_code=400,
-            detail="student_id and sensor_slot must be integers.",
+            detail="sensor_slot must be an integer.",
         )
 
-    if student_id <= 0 or sensor_slot < 0:
+    if sensor_slot < 0:
         raise HTTPException(
             status_code=400,
-            detail="Invalid student ID or sensor slot.",
+            detail="Invalid sensor slot.",
         )
 
-    biometric = db.query(StudentBiometric).filter(
-        StudentBiometric.student_id == student_id
-    ).first()
+    person_type = data.get("person_type")
+
+    if person_type == "student" or (
+        person_type is None and "student_id" in data
+    ):
+        try:
+            student_id = int(data["student_id"])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail="student_id must be an integer.",
+            )
+
+        biometric = db.query(StudentBiometric).filter(
+            StudentBiometric.student_id == student_id
+        ).first()
+
+        person_details = {"student_id": student_id}
+
+    elif person_type == "employee" or (
+        person_type is None and "employee_number" in data
+    ):
+        employee_number = data.get("employee_number")
+
+        if not isinstance(employee_number, str) or not employee_number.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="employee_number must be a non-empty string.",
+            )
+
+        employee = db.query(Employee).filter(
+            Employee.employee_number == employee_number.strip()
+        ).first()
+
+        if employee is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Employee not found.",
+            )
+
+        if employee.role.strip().lower() != "lecturer":
+            raise HTTPException(
+                status_code=400,
+                detail="Only lecturers can be enrolled through this endpoint.",
+            )
+
+        biometric = db.query(StudentBiometric).filter(
+            StudentBiometric.employee_id == employee.id
+        ).first()
+
+        person_details = {
+            "employee_number": employee.employee_number,
+            "employee_name": f"{employee.first_name} {employee.last_name}",
+        }
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Supply person_type and the matching student_id or employee_number.",
+        )
 
     if biometric is None:
         raise HTTPException(
             status_code=404,
-            detail="Student biometric record not found.",
+            detail="Biometric record not found.",
         )
 
     if not biometric.fingerprint_enrollment_pending:
         raise HTTPException(
             status_code=409,
-            detail="No enrollment request is pending for this student.",
+            detail="No enrollment request is pending for this person.",
+        )
+
+    if biometric.fingerprint_sensor_slot is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="A physical fingerprint is already registered.",
+        )
+
+    if biometric.fingerprint_revocation_pending:
+        raise HTTPException(
+            status_code=409,
+            detail="Fingerprint revocation is pending.",
         )
 
     existing_slot = db.query(StudentBiometric).filter(
@@ -1021,7 +1265,7 @@ def complete_sensor_enrollment(
     biometric.fingerprint_sensor_slot = sensor_slot
     biometric.fingerprint_enrollment_pending = False
 
-    face, fingerprint, status = biometric_status(biometric)
+    _, _, status = biometric_status(biometric)
     biometric.biometric_status = status
 
     try:
@@ -1037,7 +1281,7 @@ def complete_sensor_enrollment(
     return {
         "success": True,
         "message": "Physical fingerprint registration saved.",
-        "student_id": student_id,
+        **person_details,
         "sensor_slot": sensor_slot,
         "fingerprint_registered": True,
         "fingerprint_enrollment_pending": False,
@@ -1047,8 +1291,7 @@ def complete_sensor_enrollment(
 
 # =========================================================
 # PHYSICAL FINGERPRINT REVOCATION
-# Deletion is confirmed by the ESP32 before the DB slot clears.
-# Requires fingerprint_revocation_pending in the model/database.
+# Currently supports student fingerprint revocation.
 # =========================================================
 
 @router.post("/students/{student_id}/fingerprint/sensor/revoke")
@@ -1057,7 +1300,9 @@ def request_physical_fingerprint_revocation(
     current_user=Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
 
     if student is None:
         raise HTTPException(status_code=404, detail="Student not found.")
@@ -1180,7 +1425,6 @@ def complete_sensor_revocation(
         )
 
     if not deleted:
-        # Keep the database slot so the system does not claim it was deleted.
         raise HTTPException(
             status_code=409,
             detail="The sensor did not confirm fingerprint deletion.",
@@ -1189,7 +1433,7 @@ def complete_sensor_revocation(
     biometric.fingerprint_sensor_slot = None
     biometric.fingerprint_revocation_pending = False
 
-    face, fingerprint, status = biometric_status(biometric)
+    _, fingerprint, status = biometric_status(biometric)
     biometric.biometric_status = status
 
     try:
@@ -1213,9 +1457,106 @@ def complete_sensor_revocation(
 
 
 # =========================================================
+# LECTURER SESSION START
+# A valid lecturer fingerprint starts a class only when exactly
+# one active timetable entry matches the current day and time.
+# =========================================================
+
+def start_lecturer_session_from_sensor(
+    employee: Employee,
+    db: Session,
+):
+    now = datetime.now()
+    today = now.date()
+    current_time = now.time()
+    day = now.strftime("%A")
+
+    classes = db.query(Timetable).filter(
+        Timetable.lecturer_id == employee.id,
+        Timetable.day_of_week == day,
+        Timetable.start_time <= current_time,
+        Timetable.end_time >= current_time,
+        Timetable.active.is_(True),
+    ).all()
+
+    if not classes:
+        return {
+            "success": True,
+            "verified": True,
+            "authorized": False,
+            "door_action": "keep_locked",
+            "message": "No class is scheduled for this lecturer at this time.",
+        }
+
+    if len(classes) > 1:
+        return {
+            "success": True,
+            "verified": True,
+            "authorized": False,
+            "door_action": "keep_locked",
+            "message": "Multiple timetable entries match. Administrator review is required.",
+        }
+
+    timetable = classes[0]
+
+    existing = db.query(AttendanceSession).filter(
+        AttendanceSession.lecturer_id == employee.id,
+        AttendanceSession.session_date == today,
+        AttendanceSession.status == "active",
+    ).first()
+
+    if existing:
+        return {
+            "success": True,
+            "verified": True,
+            "authorized": True,
+            "door_action": "unlock",
+            "already_active": True,
+            "session_id": existing.id,
+            "module_id": existing.module_id,
+            "laboratory": existing.laboratory,
+            "message": "Lecturer verified. The class session is already active.",
+        }
+
+    session = AttendanceSession(
+        timetable_id=timetable.id,
+        lecturer_id=employee.id,
+        module_id=timetable.module_id,
+        laboratory=timetable.laboratory,
+        session_date=today,
+        opened_at=now,
+        status="active",
+    )
+
+    db.add(session)
+
+    try:
+        db.commit()
+        db.refresh(session)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not start the lecturer's attendance session.",
+        )
+
+    return {
+        "success": True,
+        "verified": True,
+        "authorized": True,
+        "door_action": "unlock",
+        "already_active": False,
+        "session_id": session.id,
+        "module_id": session.module_id,
+        "laboratory": session.laboratory,
+        "message": "Lecturer verified. The scheduled class session has started.",
+    }
+
+
+# =========================================================
 # PHYSICAL FINGERPRINT ATTENDANCE
-# ESP32 reports a matched sensor slot; the server determines
-# the student and active module.
+# ESP32 submits a matched sensor slot. The server determines
+# whether it belongs to a student or a lecturer.
 # =========================================================
 
 @router.post("/device/fingerprint/attendance")
@@ -1242,27 +1583,83 @@ def record_sensor_fingerprint_attendance(
 
     biometric = db.query(StudentBiometric).filter(
         StudentBiometric.fingerprint_sensor_slot == sensor_slot,
-        StudentBiometric.student_id.isnot(None),
     ).first()
 
     if biometric is None:
-        raise HTTPException(
-            status_code=404,
-            detail="This fingerprint slot is not registered to a student.",
-        )
+        return {
+            "success": True,
+            "verified": False,
+            "authorized": False,
+            "door_action": "keep_locked",
+            "message": "This fingerprint is not registered.",
+        }
 
     if biometric.fingerprint_revocation_pending:
-        raise HTTPException(
-            status_code=403,
-            detail="This fingerprint is being revoked and cannot record attendance.",
+        return {
+            "success": True,
+            "verified": False,
+            "authorized": False,
+            "door_action": "keep_locked",
+            "message": "This fingerprint is pending revocation.",
+        }
+
+    # Lecturer fingerprint: check timetable and start the class.
+    if biometric.employee_id is not None:
+        employee = db.query(Employee).filter(
+            Employee.id == biometric.employee_id
+        ).first()
+
+        if (
+            employee is None
+            or employee.role.strip().lower() != "lecturer"
+        ):
+            return {
+                "success": True,
+                "verified": False,
+                "authorized": False,
+                "door_action": "keep_locked",
+                "message": "Fingerprint is not assigned to an authorized lecturer.",
+            }
+
+        result = start_lecturer_session_from_sensor(employee, db)
+        result["person_type"] = "employee"
+        result["employee_number"] = employee.employee_number
+        result["person_name"] = (
+            f"{employee.first_name} {employee.last_name}"
         )
+        return result
 
-    student_id = biometric.student_id
-    session = get_active_attendance_session(student_id, db)
+    # Student fingerprint: record attendance against the active session.
+    if biometric.student_id is not None:
+        student_id = biometric.student_id
 
-    return save_attendance(
-        student_id,
-        session,
-        "physical_fingerprint",
-        db,
-    )
+        try:
+            session = get_active_attendance_session(student_id, db)
+
+            result = save_attendance(
+                student_id,
+                session,
+                "physical_fingerprint",
+                db,
+            )
+
+            result["person_type"] = "student"
+            return result
+
+        except HTTPException as exc:
+            return {
+                "success": True,
+                "verified": True,
+                "authorized": False,
+                "door_action": "keep_locked",
+                "student_id": student_id,
+                "message": exc.detail,
+            }
+
+    return {
+        "success": True,
+        "verified": False,
+        "authorized": False,
+        "door_action": "keep_locked",
+        "message": "Fingerprint record has no linked person.",
+    }

@@ -4,7 +4,8 @@ from sqlalchemy import (
     String,
     Date,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    Float,
 )
 from sqlalchemy.orm import relationship
 
@@ -20,49 +21,45 @@ class AttendanceSession(Base):
         index=True
     )
 
-    # =====================================================
     # TIMETABLE
-    # =====================================================
-
     timetable_id = Column(
         Integer,
         ForeignKey("timetable.id"),
         nullable=False
     )
 
-    # =====================================================
     # LECTURER
-    # =====================================================
-
     lecturer_id = Column(
         Integer,
         ForeignKey("employees.id"),
         nullable=False
     )
 
-    # =====================================================
     # MODULE
-    # =====================================================
-
     module_id = Column(
         Integer,
         ForeignKey("modules.id"),
         nullable=False
     )
 
-    # =====================================================
     # LABORATORY
-    # =====================================================
-
     laboratory = Column(
         String(100),
         nullable=False
     )
 
-    # =====================================================
-    # SESSION DATE / TIMES
-    # =====================================================
+    # GPS LOCATION — used by the website backup method
+    latitude = Column(
+        Float,
+        nullable=True
+    )
 
+    longitude = Column(
+        Float,
+        nullable=True
+    )
+
+    # SESSION DATE / TIMES
     session_date = Column(
         Date,
         nullable=False
@@ -78,23 +75,14 @@ class AttendanceSession(Base):
         nullable=True
     )
 
-    # =====================================================
-    # STATUS
-    #
-    # active
-    # closed
-    # =====================================================
-
+    # STATUS: active or closed
     status = Column(
         String(20),
         nullable=False,
         default="active"
     )
 
-    # =====================================================
     # RELATIONSHIPS
-    # =====================================================
-
     timetable = relationship(
         "Timetable",
         back_populates="sessions"
