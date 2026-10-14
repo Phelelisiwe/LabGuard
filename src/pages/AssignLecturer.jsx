@@ -18,7 +18,52 @@ function AssignLecturer() {
 
   const getConfig = () => {
     const token = localStorage.getItem("access_token");
+    const timeToMinutes = (time) => {
+  if (!time) return 0;
 
+  const [hours, minutes] = String(time)
+    .split(":")
+    .map(Number);
+
+  return hours * 60 + minutes;
+};
+
+const getAvailableLecturers = (entry) => {
+  return lecturers.filter((lecturer) => {
+    const lecturerId = Number(lecturer.id);
+
+    // Check all timetable entries, across every module level.
+    const hasClash = timetable.some((other) => {
+      if (Number(other.id) === Number(entry.id)) {
+        return false;
+      }
+
+      if (
+        Number(other.lecturer_id) !== lecturerId ||
+        other.day_of_week !== entry.day_of_week
+      ) {
+        return false;
+      }
+
+      const otherStart = timeToMinutes(other.start_time);
+      const otherEnd = timeToMinutes(other.end_time);
+      const selectedStart = timeToMinutes(entry.start_time);
+      const selectedEnd = timeToMinutes(entry.end_time);
+
+      // Overlapping time slots on the same day.
+      return (
+        otherStart < selectedEnd &&
+        otherEnd > selectedStart
+      );
+    });
+
+    return !hasClash;
+  });
+};
+
+const unassignedTimetable = timetable.filter(
+  (entry) => entry.lecturer_id == null
+);
     return {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -289,7 +334,7 @@ function AssignLecturer() {
                     </thead>
 
                     <tbody>
-                      {timetable.map((entry) => (
+                      {unassignedTimetable.map((entry) =>(
                         <tr key={entry.id}>
                           <td
                             style={{
@@ -359,16 +404,15 @@ function AssignLecturer() {
                                 -- Select Lecturer --
                               </option>
 
-                              {lecturers.map((lecturer) => (
-                                <option
-                                  key={lecturer.id}
-                                  value={String(lecturer.id)}
-                                >
-                                  {lecturer.first_name}{" "}
-                                  {lecturer.last_name} (
-                                  {lecturer.employee_number})
-                                </option>
-                              ))}
+                              {getAvailableLecturers(entry).map((lecturer) => (
+  <option
+    key={lecturer.id}
+    value={String(lecturer.id)}
+  >
+    {lecturer.first_name} {lecturer.last_name}
+    {" "}({lecturer.employee_number})
+  </option>
+))}
                             </select>
                           </td>
 
