@@ -1,7 +1,8 @@
+
 from datetime import time
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TimetableCreate(BaseModel):
@@ -13,6 +14,15 @@ class TimetableCreate(BaseModel):
     lecturer_id: Optional[int] = None
 
 
+class ModuleSummary(BaseModel):
+    id: int
+    module_code: str
+    module_name: str
+    level: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TimetableResponse(BaseModel):
     id: int
     lecturer_id: Optional[int]
@@ -22,6 +32,6 @@ class TimetableResponse(BaseModel):
     end_time: time
     laboratory: str
     active: bool
+    module: ModuleSummary
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
