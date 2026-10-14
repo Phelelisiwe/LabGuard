@@ -217,24 +217,43 @@ def check_existing_session_attendance(
         Attendance.date == session.session_date,
     ).first()
 
-    if existing:
+    if existing is None:
         raise HTTPException(
             status_code=409,
-            detail="You have already been marked present for this class.",
+            detail="You must check in before checking out.",
+        )
+
+    if existing.time_out is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Attendance checkout is already complete.",
         )
 
 
 def save_attendance(student_id: int, session, method: str, db: Session):
-    check_existing_session_attendance(student_id, session, db)
+    attendance = db.query(Attendance).filter(
+        Attendance.student_id == student_id,
+        Attendance.module_id == session.module_id,
+        Attendance.date == session.session_date,
+    ).first()
 
-    attendance = Attendance(
-        student_id=student_id,
-        module_id=session.module_id,
-        date=session.session_date,
-        time_in=datetime.now(),
-    )
-
-    db.add(attendance)
+    if attendance is None:
+        attendance = Attendance(
+            student_id=student_id,
+            module_id=session.module_id,
+            date=session.session_date,
+            time_in=datetime.now(),
+        )
+        db.add(attendance)
+        action = "check_in"
+    elif attendance.time_out is None:
+        attendance.time_out = datetime.now().time()
+        action = "check_out"
+    else:
+        raise HTTPException(
+            status_code=409,
+            detail="Attendance checkout is already complete.",
+        )
 
     try:
         db.commit()
@@ -252,13 +271,15 @@ def save_attendance(student_id: int, session, method: str, db: Session):
         "authorized": True,
         "door_action": "keep_locked",
         "method": method,
-        "message": "Fingerprint or face verified and attendance recorded.",
+        "action": action,
+        "message": f"Attendance {action.replace('_', ' ')} recorded successfully.",
         "student_id": student_id,
         "module_id": session.module_id,
         "session_id": session.id,
         "attendance_id": attendance.id,
         "date": str(attendance.date),
         "time_in": str(attendance.time_in),
+        "time_out": str(attendance.time_out) if attendance.time_out else None,
     }
 
 
@@ -514,7 +535,6 @@ def generate_fingerprint_attendance_options(
             detail="Fingerprint public key is missing.",
         )
 
-    check_existing_session_attendance(student_id, session, db)
     config = get_webauthn_config(request)
 
     credential_id = decode_base64url(
