@@ -1,75 +1,46 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const API_URL = "https://labguard-dklp.onrender.com";
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+function timeToMinutes(time) {
+  if (!time) return 0;
+  const [hours, minutes, seconds = 0] = String(time).split(":").map(Number);
+  return hours * 60 + minutes + seconds / 60;
+}
+
+function normalizeRole(role) {
+  return String(role || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("_", " ");
+}
+
+function formatTime(time) {
+  return time ? String(time).slice(0, 5) : "—";
+}
 
 function AssignLecturer() {
   const navigate = useNavigate();
 
   const [timetable, setTimetable] = useState([]);
   const [lecturers, setLecturers] = useState([]);
-  const [assignments, setAssignments] = useState({});
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [selectedLecturerId, setSelectedLecturerId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const getConfig = () => {
-    const token = localStorage.getItem("access_token");
-    const timeToMinutes = (time) => {
-  if (!time) return 0;
-
-  const [hours, minutes] = String(time)
-    .split(":")
-    .map(Number);
-
-  return hours * 60 + minutes;
-};
-
-const getAvailableLecturers = (entry) => {
-  return lecturers.filter((lecturer) => {
-    const lecturerId = Number(lecturer.id);
-
-    // Check all timetable entries, across every module level.
-    const hasClash = timetable.some((other) => {
-      if (Number(other.id) === Number(entry.id)) {
-        return false;
-      }
-
-      if (
-        Number(other.lecturer_id) !== lecturerId ||
-        other.day_of_week !== entry.day_of_week
-      ) {
-        return false;
-      }
-
-      const otherStart = timeToMinutes(other.start_time);
-      const otherEnd = timeToMinutes(other.end_time);
-      const selectedStart = timeToMinutes(entry.start_time);
-      const selectedEnd = timeToMinutes(entry.end_time);
-
-      // Overlapping time slots on the same day.
-      return (
-        otherStart < selectedEnd &&
-        otherEnd > selectedStart
-      );
-    });
-
-    return !hasClash;
+  const getConfig = () => ({
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+    },
   });
-};
-
-const unassignedTimetable = timetable.filter(
-  (entry) => entry.lecturer_id == null
-);
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-  };
 
   const getErrorMessage = (err) => {
     const detail = err.response?.data?.detail;
@@ -77,19 +48,13 @@ const unassignedTimetable = timetable.filter(
     if (Array.isArray(detail)) {
       return detail.map((item) => item.msg).join(", ");
     }
-
-    if (typeof detail === "string") {
-      return detail;
-    }
-
+    if (typeof detail === "string") return detail;
     if (err.response?.status === 401) {
       return "Your session has expired. Please log in again.";
     }
-
     if (err.response?.status === 403) {
       return "Only the Super Admin can manage lecturer assignments.";
     }
-
     return err.message || "Something went wrong. Please try again.";
   };
 
@@ -99,45 +64,22 @@ const unassignedTimetable = timetable.filter(
 
     try {
       const config = getConfig();
-
-      const [timetableResponse, employeesResponse] =
-        await Promise.all([
-          axios.get(`${API_URL}/timetable/`, config),
-          axios.get(`${API_URL}/admin/employees`, config),
-        ]);
+      const [timetableResponse, employeesResponse] = await Promise.all([
+        axios.get(`${API_URL}/timetable/`, config),
+        axios.get(`${API_URL}/admin/employees`, config),
+      ]);
 
       setTimetable(timetableResponse.data);
 
-      // Support common role formats returned by the backend.
-      const lecturerEmployees = employeesResponse.data.filter(
-        (employee) => {
-          const role = String(employee.role || "")
-            .trim()
-            .toLowerCase()
-            .replaceAll("_", " ");
-
-          return (
-            role === "lecturer" ||
-            role === "assistant lecturer"
-          );
-        }
+      setLecturers(
+        employeesResponse.data.filter((employee) =>
+          ["lecturer", "assistant lecturer"].includes(
+            normalizeRole(employee.role)
+          )
+        )
       );
-
-      setLecturers(lecturerEmployees);
-
-      // Prepare the selected lecturer for each timetable entry.
-      const initialAssignments = {};
-
-      for (const entry of timetableResponse.data) {
-        initialAssignments[entry.id] =
-          entry.lecturer_id == null
-            ? ""
-            : String(entry.lecturer_id);
-      }
-
-      setAssignments(initialAssignments);
     } catch (err) {
-      console.error("Failed to load assignment data:", err);
+      console.error("Failed to load lecturer assignment data:", err);
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
@@ -148,110 +90,158 @@ const unassignedTimetable = timetable.filter(
     loadData();
   }, [loadData]);
 
-  const handleAssign = async (entry) => {
-    const lecturerId = assignments[entry.id];
+  // Group timetable entries into modules and keep each module's sessions.
+  const modules = useMemo(() => {
+    const grouped = new Map();
 
+    for (const entry of timetable) {
+      if (!entry.active) continue;
+
+      if (!grouped.has(entry.module_id)) {
+        grouped.set(entry.module_id, {
+          id: entry.module_id,
+          sessions: [],
+          lecturerIds: new Set(),
+        });
+      }
+
+      const module = grouped.get(entry.module_id);
+      module.sessions.push(entry);
+
+      if (entry.lecturer_id != null) {
+        module.lecturerIds.add(Number(entry.lecturer_id));
+      }
+    }
+
+    return [...grouped.values()]
+      .map((module) => ({
+        ...module,
+        sessions: module.sessions.sort(
+          (a, b) =>
+            DAYS.indexOf(a.day_of_week) - DAYS.indexOf(b.day_of_week) ||
+            timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
+        ),
+        assignedLecturerId:
+          module.lecturerIds.size === 1
+            ? [...module.lecturerIds][0]
+            : null,
+        hasMixedAssignments: module.lecturerIds.size > 1,
+      }))
+      .sort((a, b) => a.id - b.id);
+  }, [timetable]);
+
+  const selectedModule = modules.find(
+    (module) => String(module.id) === selectedModuleId
+  );
+
+  // Only modules with no existing lecturer assignment are assignable.
+  const unassignedModules = modules.filter(
+    (module) =>
+      module.lecturerIds.size === 0 && !module.hasMixedAssignments
+  );
+
+  const assignedModules = modules.filter(
+    (module) => module.lecturerIds.size > 0
+  );
+
+  // A lecturer is available only if every session of the selected
+  // module is free of clashes with their other active sessions.
+  const availableLecturers = useMemo(() => {
+    if (!selectedModule) return [];
+
+    return lecturers.filter((lecturer) => {
+      const lecturerId = Number(lecturer.id);
+
+      return selectedModule.sessions.every((session) => {
+        return !timetable.some((other) => {
+          if (!other.active) return false;
+          if (Number(other.lecturer_id) !== lecturerId) return false;
+          if (Number(other.module_id) === Number(selectedModule.id)) {
+            return false;
+          }
+          if (other.day_of_week !== session.day_of_week) return false;
+
+          return (
+            timeToMinutes(other.start_time) <
+              timeToMinutes(session.end_time) &&
+            timeToMinutes(other.end_time) >
+              timeToMinutes(session.start_time)
+          );
+        });
+      });
+    });
+  }, [selectedModule, lecturers, timetable]);
+
+  const handleModuleChange = (value) => {
+    setSelectedModuleId(value);
+    setSelectedLecturerId("");
     setMessage("");
     setError("");
+  };
 
-    if (!lecturerId) {
-      setError("Please select a lecturer first.");
+  const handleAssign = async () => {
+    if (!selectedModule) {
+      setError("Please select a module.");
       return;
     }
 
-    setSavingId(entry.id);
+    if (!selectedLecturerId) {
+      setError("Please select an available lecturer.");
+      return;
+    }
+
+    if (
+      !availableLecturers.some(
+        (lecturer) => Number(lecturer.id) === Number(selectedLecturerId)
+      )
+    ) {
+      setError("That lecturer is no longer available. Refresh and try again.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
 
     try {
       const response = await axios.put(
-        `${API_URL}/timetable/${entry.id}/assign-lecturer`,
+        `${API_URL}/timetable/module/${selectedModule.id}/assign-lecturer`,
         null,
         {
           ...getConfig(),
-          params: {
-            lecturer_id: Number(lecturerId),
-          },
+          params: { lecturer_id: Number(selectedLecturerId) },
         }
       );
 
       setMessage(
-        `Lecturer assigned successfully to timetable entry #${entry.id}.`
+        `Lecturer assigned successfully to module ${selectedModule.id} (${response.data.length} timetable sessions).`
       );
 
-      // Use the returned record, then reload the saved assignments.
-      setTimetable((previous) =>
-        previous.map((item) =>
-          item.id === entry.id ? response.data : item
-        )
-      );
-
+      setSelectedModuleId("");
+      setSelectedLecturerId("");
       await loadData();
     } catch (err) {
-      console.error("Assignment failed:", err);
+      console.error("Module lecturer assignment failed:", err);
       setError(getErrorMessage(err));
     } finally {
-      setSavingId(null);
-    }
-  };
-
-  const handleUnassign = async (entry) => {
-    if (
-      !window.confirm(
-        "Remove the lecturer from this timetable entry?"
-      )
-    ) {
-      return;
-    }
-
-    setMessage("");
-    setError("");
-    setSavingId(entry.id);
-
-    try {
-      await axios.put(
-        `${API_URL}/timetable/${entry.id}/unassign-lecturer`,
-        null,
-        getConfig()
-      );
-
-      setMessage(
-        `Lecturer removed from timetable entry #${entry.id}.`
-      );
-
-      await loadData();
-    } catch (err) {
-      console.error("Unassignment failed:", err);
-      setError(getErrorMessage(err));
-    } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
   const getLecturerName = (lecturerId) => {
     const lecturer = lecturers.find(
-      (employee) => employee.id === lecturerId
+      (item) => Number(item.id) === Number(lecturerId)
     );
 
-    if (!lecturer) {
-      return lecturerId == null
-        ? "Not assigned"
-        : `Employee ID ${lecturerId}`;
-    }
-
-    return `${lecturer.first_name} ${lecturer.last_name}`;
-  };
-
-  const formatTime = (time) => {
-    if (!time) return "—";
-
-    // Handles both "09:00:00" and "09:00".
-    return String(time).slice(0, 5);
+    return lecturer
+      ? `${lecturer.first_name} ${lecturer.last_name}`
+      : `Employee ID ${lecturerId}`;
   };
 
   return (
     <div className="admin-page">
       <nav className="admin-navbar">
         <div className="admin-logo">LabGuard</div>
-
         <button
           type="button"
           className="logout-button"
@@ -265,190 +255,160 @@ const unassignedTimetable = timetable.filter(
         <div className="admin-header">
           <h1>Lecturer Assignments</h1>
           <p>
-            Assign lecturers to scheduled modules and laboratory
-            sessions.
+            Assign one lecturer to a module for the entire weekly timetable.
+            Availability is checked across all levels.
           </p>
         </div>
 
-        {error && (
-          <div className="error-message" role="alert">
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div className="success-message" role="status">
-            {message}
-          </div>
-        )}
+        {error && <div className="error-message" role="alert">{error}</div>}
+        {message && <div className="success-message" role="status">{message}</div>}
 
         {loading ? (
-          <p>Loading timetable and lecturers...</p>
+          <p>Loading modules and lecturers...</p>
         ) : (
           <>
-            <div className="admin-card">
-              <h2>Timetable Assignments</h2>
+            <section className="admin-card">
+              <h2>Assign a Lecturer to a Module</h2>
 
-              <p>
-                Select a lecturer for each scheduled entry. Changes
-                are saved to the backend when you click Assign.
-              </p>
-
-              {timetable.length === 0 ? (
+              {unassignedModules.length === 0 ? (
                 <p>
-                  No timetable entries were found. Create timetable
-                  entries first, then return here to assign lecturers.
+                  No unassigned modules with active timetable sessions were
+                  found. Create the module timetable first, or check the
+                  existing assignments below.
                 </p>
+              ) : (
+                <>
+                  <label htmlFor="module-select">Module</label>
+                  <select
+                    id="module-select"
+                    value={selectedModuleId}
+                    onChange={(event) => handleModuleChange(event.target.value)}
+                  >
+                    <option value="">-- Select Module --</option>
+                    {unassignedModules.map((module) => (
+                      <option key={module.id} value={String(module.id)}>
+                        Module {module.id}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedModule && (
+                    <>
+                      <h3>Weekly sessions for Module {selectedModule.id}</h3>
+                      <div style={{ overflowX: "auto" }}>
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            minWidth: "600px",
+                          }}
+                        >
+                          <thead>
+                            <tr>
+                              <th>Day</th>
+                              <th>Time</th>
+                              <th>Laboratory</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedModule.sessions.map((session) => (
+                              <tr key={session.id}>
+                                <td>{session.day_of_week}</td>
+                                <td>
+                                  {formatTime(session.start_time)}–
+                                  {formatTime(session.end_time)}
+                                </td>
+                                <td>{session.laboratory || "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <label htmlFor="lecturer-select">Available lecturer</label>
+                      <select
+                        id="lecturer-select"
+                        value={selectedLecturerId}
+                        onChange={(event) =>
+                          setSelectedLecturerId(event.target.value)
+                        }
+                        disabled={availableLecturers.length === 0}
+                      >
+                        <option value="">-- Select Lecturer --</option>
+                        {availableLecturers.map((lecturer) => (
+                          <option
+                            key={lecturer.id}
+                            value={String(lecturer.id)}
+                          >
+                            {lecturer.first_name} {lecturer.last_name}
+                            {lecturer.employee_number
+                              ? ` (${lecturer.employee_number})`
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+
+                      {availableLecturers.length === 0 && (
+                        <p>
+                          No lecturers are available for every session of
+                          this module. Check the timetable for clashes.
+                        </p>
+                      )}
+
+                      <button
+                        type="button"
+                        className="dashboard-button"
+                        style={{ marginTop: "16px" }}
+                        disabled={
+                          saving ||
+                          !selectedLecturerId ||
+                          availableLecturers.length === 0
+                        }
+                        onClick={handleAssign}
+                      >
+                        {saving ? "Assigning..." : "Assign Lecturer to Module"}
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </section>
+
+            <section className="admin-card">
+              <h2>Existing Module Assignments</h2>
+              {assignedModules.length === 0 ? (
+                <p>No module assignments have been made yet.</p>
               ) : (
                 <div style={{ overflowX: "auto" }}>
                   <table
                     style={{
                       width: "100%",
                       borderCollapse: "collapse",
-                      minWidth: "760px",
+                      minWidth: "600px",
                     }}
                   >
                     <thead>
                       <tr>
-                        {[
-                          "Day",
-                          "Time",
-                          "Module ID",
-                          "Laboratory",
-                          "Current Lecturer",
-                          "Assign Lecturer",
-                          "Actions",
-                        ].map((heading) => (
-                          <th
-                            key={heading}
-                            style={{
-                              textAlign: "left",
-                              padding: "12px 8px",
-                              borderBottom: "2px solid #ddd",
-                            }}
-                          >
-                            {heading}
-                          </th>
-                        ))}
+                        <th>Module ID</th>
+                        <th>Lecturer</th>
+                        <th>Weekly Sessions</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
-
                     <tbody>
-                      {unassignedTimetable.map((entry) =>(
-                        <tr key={entry.id}>
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              borderBottom: "1px solid #ddd",
-                            }}
-                          >
-                            {entry.day_of_week}
+                      {assignedModules.map((module) => (
+                        <tr key={module.id}>
+                          <td>{module.id}</td>
+                          <td>
+                            {module.hasMixedAssignments
+                              ? "Multiple lecturers — needs review"
+                              : getLecturerName(module.assignedLecturerId)}
                           </td>
-
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              whiteSpace: "nowrap",
-                              borderBottom: "1px solid #ddd",
-                            }}
-                          >
-                            {formatTime(entry.start_time)}–
-                            {formatTime(entry.end_time)}
-                          </td>
-
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              borderBottom: "1px solid #ddd",
-                            }}
-                          >
-                            {entry.module_id}
-                          </td>
-
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              borderBottom: "1px solid #ddd",
-                            }}
-                          >
-                            {entry.laboratory || "—"}
-                          </td>
-
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              borderBottom: "1px solid #ddd",
-                            }}
-                          >
-                            {getLecturerName(entry.lecturer_id)}
-                          </td>
-
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              borderBottom: "1px solid #ddd",
-                            }}
-                          >
-                            <select
-                              aria-label={`Lecturer for timetable entry ${entry.id}`}
-                              value={assignments[entry.id] ?? ""}
-                              onChange={(event) =>
-                                setAssignments((previous) => ({
-                                  ...previous,
-                                  [entry.id]: event.target.value,
-                                }))
-                              }
-                              disabled={savingId === entry.id}
-                            >
-                              <option value="">
-                                -- Select Lecturer --
-                              </option>
-
-                              {getAvailableLecturers(entry).map((lecturer) => (
-  <option
-    key={lecturer.id}
-    value={String(lecturer.id)}
-  >
-    {lecturer.first_name} {lecturer.last_name}
-    {" "}({lecturer.employee_number})
-  </option>
-))}
-                            </select>
-                          </td>
-
-                          <td
-                            style={{
-                              padding: "12px 8px",
-                              borderBottom: "1px solid #ddd",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              className="dashboard-button"
-                              disabled={
-                                savingId === entry.id ||
-                                !assignments[entry.id] ||
-                                lecturers.length === 0
-                              }
-                              onClick={() => handleAssign(entry)}
-                            >
-                              {savingId === entry.id
-                                ? "Saving..."
-                                : "Assign"}
-                            </button>
-
-                            {entry.lecturer_id != null && (
-                              <button
-                                type="button"
-                                className="logout-button"
-                                style={{ marginLeft: "6px" }}
-                                disabled={savingId === entry.id}
-                                onClick={() => handleUnassign(entry)}
-                              >
-                                Remove
-                              </button>
-                            )}
+                          <td>{module.sessions.length}</td>
+                          <td>
+                            {module.hasMixedAssignments
+                              ? "Inconsistent assignment"
+                              : "Assigned"}
                           </td>
                         </tr>
                       ))}
@@ -456,46 +416,16 @@ const unassignedTimetable = timetable.filter(
                   </table>
                 </div>
               )}
+            </section>
 
-              {lecturers.length === 0 && (
-                <p>
-                  No lecturers or assistant lecturers were found.
-                  Register an employee with the appropriate role first.
-                </p>
-              )}
-
-              <button
-                type="button"
-                className="dashboard-button"
-                style={{ marginTop: "18px" }}
-                onClick={loadData}
-                disabled={loading}
-              >
-                Refresh Assignments
-              </button>
-            </div>
-
-            <div className="admin-card">
-              <h2>Assignment Summary</h2>
-
-              <p>
-                Total timetable entries: {timetable.length}
-              </p>
-
-              <p>
-                Assigned entries:{" "}
-                {timetable.filter(
-                  (entry) => entry.lecturer_id != null
-                ).length}
-              </p>
-
-              <p>
-                Unassigned entries:{" "}
-                {timetable.filter(
-                  (entry) => entry.lecturer_id == null
-                ).length}
-              </p>
-            </div>
+            <button
+              type="button"
+              className="dashboard-button"
+              onClick={loadData}
+              disabled={loading || saving}
+            >
+              Refresh Assignments
+            </button>
           </>
         )}
       </main>
