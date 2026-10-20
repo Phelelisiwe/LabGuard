@@ -1,262 +1,136 @@
 
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./AdminDashboard.css";
+
+const actions = [
+  {
+    icon: "♙",
+    title: "Register Student",
+    description: "Create student accounts and send their login details.",
+    button: "Register Student",
+    path: "/admin/register-student",
+  },
+  {
+    icon: "♧",
+    title: "Register Employee",
+    description: "Register lecturers, assistants and laboratory staff.",
+    button: "Register Employee",
+    path: "/admin/register-employee",
+  },
+  {
+    icon: "▤",
+    title: "Assign Lecturer",
+    description: "Manage lecturers assigned to teaching modules.",
+    button: "Assign Lecturer",
+    path: "/admin/assign-lecturer",
+  },
+  {
+    icon: "⌫",
+    title: "Delete User",
+    description: "Remove a student or employee from LabGuard.",
+    button: "Manage User Deletion",
+    path: "/admin/delete-user",
+    danger: true,
+  },
+];
 
 function AdminDashboard() {
   const navigate = useNavigate();
 
-  const [deleteType, setDeleteType] = useState("student");
-  const [userNumber, setUserNumber] = useState("");
-
-  const handleDelete = (e) => {
-    e.preventDefault();
-
-    if (!userNumber.trim()) {
-      alert("Please enter a student or employee number.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete this ${deleteType}?`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    // We will connect this to the FastAPI DELETE endpoint later
-    console.log("Delete:", deleteType, userNumber);
-
-    alert(
-      `${deleteType === "student" ? "Student" : "Employee"} deletion submitted.`
-    );
-
-    setUserNumber("");
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    navigate("/login");
   };
 
   return (
-    <div className="admin-page">
-
-      <nav className="admin-navbar">
-
-        <div className="admin-logo">
-          LabGuard
+    <div className="lg-dashboard">
+      <header className="lg-navbar">
+        <div className="lg-brand">
+          <img
+            src="/tut-logo.png"
+            alt="Tshwane University of Technology logo"
+            className="lg-logo"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <div>
+            <span className="lg-brand-name">LabGuard</span>
+            <span className="lg-brand-subtitle">
+              LABORATORY MANAGEMENT SYSTEM
+            </span>
+          </div>
         </div>
 
-        <button
-          className="logout-button"
-          onClick={() => navigate("/login")}
-        >
-          Logout
-        </button>
+        <div className="lg-nav-right">
+          <span className="lg-admin-label">Super Admin</span>
+          <button className="lg-logout" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
+      </header>
 
-      </nav>
-
-      <main className="admin-content">
-
-        <div className="admin-header">
-
-          <h1>Super Admin Dashboard</h1>
-
-          <p>
-            Manage LabGuard students and employees.
-          </p>
-
+      <main className="lg-main">
+        <div className="lg-welcome">
+          <div>
+            <span className="lg-eyebrow">ADMINISTRATION</span>
+            <h1>Dashboard</h1>
+            <p>
+              Welcome to LabGuard. Manage users and laboratory access
+              from one place.
+            </p>
+          </div>
+          <div className="lg-status">
+            <span className="lg-status-dot" />
+            System management
+          </div>
         </div>
 
-        <div className="admin-actions">
-
-          {/* Assign Lecturer */}
-
-          <div className="admin-card">
-
-            <div className="admin-card-icon">
-              📚
+        <section className="lg-section">
+          <div className="lg-section-heading">
+            <div>
+              <h2>Quick actions</h2>
+              <p>Choose an action to continue.</p>
             </div>
-
-            <h2>Assign Lecturer</h2>
-
-            <p>
-              Assign lecturers to the modules they teach.
-            </p>
-
-            <button
-              className="dashboard-button"
-              onClick={() =>
-                navigate("/admin/assign-lecturer")
-              }
-            >
-              Assign Lecturer
-            </button>
-
           </div>
 
+          <div className="lg-action-grid">
+            {actions.map((action) => (
+              <article
+                className={`lg-action-card ${
+                  action.danger ? "lg-danger-card" : ""
+                }`}
+                key={action.title}
+              >
+                <div className="lg-card-top">
+                  <div className="lg-action-icon">{action.icon}</div>
+                  {action.danger && (
+                    <span className="lg-danger-tag">Sensitive action</span>
+                  )}
+                </div>
 
-          {/* Register Employee */}
-
-          <div className="admin-card">
-
-            <div className="admin-card-icon">
-              👨‍💼
-            </div>
-
-            <h2>Register Employee</h2>
-
-            <p>
-              Register lecturers, assistant lecturers,
-              cleaners and IT specialists.
-            </p>
-
-            <button
-              className="dashboard-button"
-              onClick={() =>
-                navigate("/admin/register-employee")
-              }
-            >
-              Register Employee
-            </button>
-
-          </div>
-
-
-          {/* Register Student */}
-
-          <div className="admin-card">
-
-            <div className="admin-card-icon">
-              🎓
-            </div>
-
-            <h2>Register Student</h2>
-
-            <p>
-              Register students who are authorized
-              to access the laboratory.
-            </p>
-
-            <button
-              className="dashboard-button"
-              onClick={() =>
-                navigate("/admin/register-student")
-              }
-            >
-              Register Student
-            </button>
-
-          </div>
-
-
-          {/* Biometric Registration */}
-
-          <div className="admin-card">
-
-            <div className="admin-card-icon">
-              🔐
-            </div>
-
-            <h2>Biometric Registration</h2>
-
-            <p>
-              Register face and fingerprint biometrics
-              for students and employees.
-            </p>
-
-            <button
-              className="dashboard-button"
-              onClick={() =>
-                navigate("/admin/biometric")
-              }
-            >
-              Register Biometrics
-            </button>
-
-          </div>
-
-<div className="admin-card">
-  <div className="admin-card-icon">🔐</div>
-
-  <h2>Biometric Registration</h2>
-
-  <p>
-    Register student and employee faces and request physical
-    fingerprint enrollment for laboratory access.
-  </p>
-
-  <button
-    className="dashboard-button"
-    onClick={() => navigate("/admin/biometric")}
-  >
-    Open Biometric Registration
-  </button>
-</div>
-
-
-          {/* Delete User */}
-
-          <div className="admin-card delete-card">
-
-            <div className="admin-card-icon">
-              🗑️
-            </div>
-
-            <h2>Delete User</h2>
-
-            <p>
-              Remove a student or employee from
-              the LabGuard system.
-            </p>
-
-            <form onSubmit={handleDelete}>
-
-              <div className="delete-form">
-
-                <select
-                  value={deleteType}
-                  onChange={(e) =>
-                    setDeleteType(e.target.value)
-                  }
-                >
-                  <option value="student">
-                    Student
-                  </option>
-
-                  <option value="employee">
-                    Employee
-                  </option>
-
-                </select>
-
-                <input
-                  type="text"
-                  placeholder={
-                    deleteType === "student"
-                      ? "Student number"
-                      : "Employee number"
-                  }
-                  value={userNumber}
-                  onChange={(e) =>
-                    setUserNumber(e.target.value)
-                  }
-                  required
-                />
+                <h3>{action.title}</h3>
+                <p>{action.description}</p>
 
                 <button
-                  type="submit"
-                  className="delete-button"
+                  className={`lg-action-button ${
+                    action.danger ? "lg-danger-button" : ""
+                  }`}
+                  onClick={() => navigate(action.path)}
                 >
-                  Delete User
+                  {action.button}
+                  <span aria-hidden="true"> →</span>
                 </button>
-
-              </div>
-
-            </form>
-
+              </article>
+            ))}
           </div>
+        </section>
 
-        </div>
-
+        <footer className="lg-footer">
+          <span>LabGuard</span>
+          <span>Secure laboratory access and management</span>
+        </footer>
       </main>
-
     </div>
   );
 }

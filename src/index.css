@@ -1,4 +1,4 @@
-html {
+﻿html {
   scroll-behavior: smooth;
 }
 
@@ -652,7 +652,7 @@ html {
 }
 
 .landing-page .feature-card li::before {
-  content: "✓";
+  content: "âœ“";
   color: #218838;
   font-weight: bold;
   margin-right: 8px;
@@ -1163,127 +1163,6 @@ html {
 
   .login-header h1 {
     font-size: 36px;
-  }
-}
-/* Super Admin Dashboard */
-
-.admin-page {
-  min-height: 100vh;
-  background: #f4f7fb;
-}
-
-.admin-navbar {
-  height: 80px;
-  padding: 0 7%;
-  background: #071a3d;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.admin-logo {
-  color: white;
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.logout-button {
-  background: white;
-  color: #071a3d;
-  border: none;
-  padding: 13px 30px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.logout-button:hover {
-  background: #e8edf5;
-}
-
-.admin-content {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 65px 30px;
-}
-
-.admin-header {
-  text-align: center;
-  margin-bottom: 50px;
-}
-
-.admin-header h1 {
-  color: #071a3d;
-  font-size: 42px;
-  margin-bottom: 12px;
-}
-
-.admin-header p {
-  color: #68748a;
-  font-size: 18px;
-}
-
-.admin-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 35px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.admin-card {
-  background: white;
-  padding: 45px;
-  border-radius: 16px;
-  text-align: center;
-  border: 1px solid #e1e6ef;
-  box-shadow: 0 10px 25px rgba(7, 26, 61, 0.08);
-}
-
-.admin-card-icon {
-  font-size: 45px;
-  margin-bottom: 20px;
-}
-
-.admin-card h2 {
-  color: #071a3d;
-  font-size: 26px;
-  margin-bottom: 15px;
-}
-
-.admin-card p {
-  color: #68748a;
-  line-height: 1.6;
-  margin-bottom: 30px;
-}
-
-.dashboard-button {
-  width: 100%;
-  padding: 18px;
-  background: #071a3d;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.dashboard-button:hover {
-  background: #0d2b61;
-}
-
-@media (max-width: 700px) {
-  .admin-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-header h1 {
-    font-size: 32px;
-  }
-
-  .admin-content {
-    padding: 45px 20px;
   }
 }
 /* Registration Pages */
@@ -3335,139 +3214,6 @@ html {
 
 .back-button:hover {
   color: #c8102e;
-}
-
-
-/* =========================================================
-   SUPER ADMIN PAGE
-========================================================= */
-
-.admin-page {
-  background:
-    linear-gradient(
-      rgba(242,246,250,0.94),
-      rgba(242,246,250,0.97)
-    ),
-    url("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=2000&q=85");
-
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-.admin-navbar {
-  background: rgba(7,26,61,0.97);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-  border-bottom: 4px solid #f2b705;
-}
-
-.admin-logo {
-  letter-spacing: 0.5px;
-}
-
-.admin-navbar .logout-button {
-  transition: 0.25s ease;
-}
-
-.admin-navbar .logout-button:hover {
-  background: #f2b705;
-  color: #003b70;
-  transform: translateY(-2px);
-}
-
-.admin-content {
-  padding-top: 70px;
-  padding-bottom: 80px;
-}
-
-.admin-header h1 {
-  font-size: 44px;
-  letter-spacing: -1px;
-}
-
-.admin-actions {
-  gap: 25px;
-}
-
-.admin-card {
-  position: relative;
-  overflow: hidden;
-
-  border-radius: 20px;
-
-  box-shadow:
-    0 12px 35px rgba(7,26,61,0.10);
-
-  transition: 0.3s ease;
-}
-
-.admin-card::after {
-  content: "";
-
-  position: absolute;
-
-  width: 150px;
-  height: 150px;
-
-  right: -65px;
-  bottom: -65px;
-
-  border-radius: 50%;
-
-  background: rgba(0,59,112,0.04);
-}
-
-.admin-card:hover {
-  transform: translateY(-7px);
-
-  box-shadow:
-    0 25px 55px rgba(7,26,61,0.16);
-}
-
-.admin-card-icon {
-  width: 70px;
-  height: 70px;
-
-  margin: 0 auto 22px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 18px;
-
-  background: linear-gradient(
-    135deg,
-    #e7f0f8,
-    #dcebf7
-  );
-}
-
-.admin-card h2 {
-  position: relative;
-  z-index: 2;
-}
-
-.dashboard-button {
-  position: relative;
-  z-index: 2;
-
-  background: linear-gradient(
-    135deg,
-    #003b70,
-    #075b96
-  );
-
-  cursor: pointer;
-
-  transition: 0.25s ease;
-}
-
-.dashboard-button:hover {
-  transform: translateY(-2px);
-
-  box-shadow:
-    0 10px 25px rgba(0,59,112,0.22);
 }
 
 
@@ -9212,3 +8958,5 @@ html {
     gap: 5px;
   }
 }
+
+

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -12,8 +11,6 @@ function RegisterEmployee() {
     last_name: "",
     email: "",
     role: "",
-    password: "",
-    confirm_password: "",
   });
 
   const [message, setMessage] = useState("");
@@ -21,10 +18,10 @@ function RegisterEmployee() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((previous) => ({
+      ...previous,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -32,11 +29,6 @@ function RegisterEmployee() {
 
     setMessage("");
     setError("");
-
-    if (formData.password !== formData.confirm_password) {
-      setError("Passwords do not match.");
-      return;
-    }
 
     const token = localStorage.getItem("access_token");
 
@@ -51,13 +43,11 @@ function RegisterEmployee() {
       const response = await axios.post(
         "https://labguard-dklp.onrender.com/admin/employees/register",
         {
-          employee_number: formData.employee_number,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
+          employee_number: formData.employee_number.trim(),
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          email: formData.email.trim(),
           role: formData.role,
-          password: formData.password,
-          confirm_password: formData.confirm_password,
         },
         {
           headers: {
@@ -67,7 +57,8 @@ function RegisterEmployee() {
       );
 
       setMessage(
-        response.data.message || "Employee registered successfully."
+        response.data.message ||
+          "Employee registered. Account instructions will be sent by email."
       );
 
       setFormData({
@@ -76,8 +67,6 @@ function RegisterEmployee() {
         last_name: "",
         email: "",
         role: "",
-        password: "",
-        confirm_password: "",
       });
     } catch (err) {
       console.error("Employee registration error:", err);
@@ -86,14 +75,12 @@ function RegisterEmployee() {
 
       if (Array.isArray(detail)) {
         setError(
-          detail
-            .map((item) => item.msg || "Invalid field")
-            .join(", ")
+          detail.map((item) => item.msg || "Invalid field").join(", ")
         );
       } else if (detail) {
         setError(String(detail));
       } else {
-        setError("Employee registration failed.");
+        setError("Could not connect to the LabGuard backend.");
       }
     } finally {
       setLoading(false);
@@ -103,30 +90,30 @@ function RegisterEmployee() {
   return (
     <div className="registration-page">
       <div className="registration-card">
-
         <h1>Register Employee</h1>
 
         <p className="registration-description">
           Register a lecturer or other LabGuard employee.
+          Login instructions will be sent to their email address.
         </p>
 
         {message && (
-          <div className="success-message">
+          <div className="success-message" role="status">
             {message}
           </div>
         )}
 
         {error && (
-          <div className="error-message">
+          <div className="error-message" role="alert">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-
           <div className="form-group">
-            <label>Employee Number</label>
+            <label htmlFor="employee_number">Employee Number</label>
             <input
+              id="employee_number"
               type="text"
               name="employee_number"
               value={formData.employee_number}
@@ -137,8 +124,9 @@ function RegisterEmployee() {
           </div>
 
           <div className="form-group">
-            <label>First Name</label>
+            <label htmlFor="first_name">First Name</label>
             <input
+              id="first_name"
               type="text"
               name="first_name"
               value={formData.first_name}
@@ -149,8 +137,9 @@ function RegisterEmployee() {
           </div>
 
           <div className="form-group">
-            <label>Last Name</label>
+            <label htmlFor="last_name">Last Name</label>
             <input
+              id="last_name"
               type="text"
               name="last_name"
               value={formData.last_name}
@@ -161,21 +150,23 @@ function RegisterEmployee() {
           </div>
 
           <div className="form-group">
-            <label>Email Address</label>
+            <label htmlFor="email">Email Address</label>
             <input
+              id="email"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter email address"
+              autoComplete="email"
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Employee Role</label>
-
+            <label htmlFor="role">Employee Role</label>
             <select
+              id="role"
               name="role"
               value={formData.role}
               onChange={handleChange}
@@ -189,34 +180,6 @@ function RegisterEmployee() {
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Password</label>
-
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter password"
-              minLength="8"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Confirm Password</label>
-
-            <input
-              type="password"
-              name="confirm_password"
-              value={formData.confirm_password}
-              onChange={handleChange}
-              placeholder="Confirm password"
-              minLength="8"
-              required
-            />
-          </div>
-
           <button
             type="submit"
             className="register-button"
@@ -224,7 +187,6 @@ function RegisterEmployee() {
           >
             {loading ? "Registering..." : "Register Employee"}
           </button>
-
         </form>
 
         <button
@@ -234,12 +196,9 @@ function RegisterEmployee() {
         >
           ← Back to Dashboard
         </button>
-
       </div>
     </div>
   );
 }
 
 export default RegisterEmployee;
-
-

@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import * as faceapi from "@vladmandic/face-api";
@@ -86,11 +85,6 @@ function BiometricRegistration() {
 
   const getPersonPath = () =>
     personType === "student" ? "students" : "employees";
-
-  const getPersonIdentifier = (person) =>
-    personType === "student"
-      ? person?.id
-      : person?.id;
 
   const loadPeople = async () => {
     setLoading(true);
@@ -457,6 +451,19 @@ function BiometricRegistration() {
       timerRef.current = setInterval(async () => {
         if (Date.now() >= deadlineRef.current) {
           stopPolling();
+          try {
+            const biometric = await refreshBiometricStatus(selectedPerson);
+            const registered =
+              biometric.fingerprint_registered ??
+              biometric.has_physical_fingerprint ??
+              biometric.has_fingerprint ??
+              (biometric.fingerprint_sensor_slot != null);
+            if (!registered) {
+              setFingerprintStatus("Not Registered");
+            }
+          } catch (e) {
+            setFingerprintStatus("Not Registered");
+          }
           setError(
             "Enrollment timed out. Check the device connection and backend device-enrollment status."
           );
@@ -668,12 +675,11 @@ function BiometricRegistration() {
               }}
             >
               <option value="">-- Select Person --</option>
-
               {filteredPeople.map((person) => (
                 <option key={person.id} value={person.id}>
                   {personType === "student"
-                    ? `${person.student_number || person.id} - `
-                    : `${person.employee_number || person.id} - `}
+                    ? `${person.student_number || person.id} `
+                    : `${person.employee_number || person.id} `}
                   {person.first_name} {person.last_name}
                   {personType === "employee" && person.role
                     ? ` (${person.role})`
@@ -855,21 +861,27 @@ function BiometricRegistration() {
 
                 {enrolling && (
                   <>
-                    <p role="status">
+                    <p role="status" style={{ marginTop: 15 }}>
                       Enrollment is pending. Keep the device powered and
                       connected.
                     </p>
 
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         stopPolling();
-                        setMessage(
-                          "Status checking stopped. This does not cancel the request already sent to the backend."
-                        );
+                        try {
+                          if (selectedPerson) {
+                            await refreshBiometricStatus(selectedPerson);
+                          }
+                        } catch (err) {
+                          setFingerprintStatus("Not Registered");
+                        }
+                        setMessage("Fingerprint enrollment was cancelled.");
+                        setError("");
                       }}
                       style={buttonStyle("#777")}
                     >
-                      Stop Waiting
+                      Cancel Enrollment
                     </button>
                   </>
                 )}
