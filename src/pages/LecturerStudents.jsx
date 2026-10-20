@@ -1,6 +1,4 @@
-
-import "./LecturerStudents.css";
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -55,7 +53,6 @@ function LecturerStudents() {
 
   return (
     <div className="dashboard lecturer-page lecturer-students-page">
-<<<<<<< HEAD
 
       {/* HEADER */}
       <header className="lecturer-page-header">
@@ -65,11 +62,6 @@ function LecturerStudents() {
           <span className="page-label">
             LECTURER PORTAL
           </span>
-=======
-      <header className="ls-header">
-        <div className="ls-header-text">
-          <span className="ls-eyebrow">LECTURER PORTAL</span>
->>>>>>> 230132a (Update LabGuard frontend and lecturer dashboard)
 
           <h1>
             {data?.module?.module_code || "Module"} Students
@@ -79,201 +71,323 @@ function LecturerStudents() {
             {data?.module?.module_name ||
               "Students registered for this module"}
           </p>
+
         </div>
 
         <button
-          type="button"
-          className="ls-back-button"
+          className="back-button"
           onClick={() => navigate("/lecturer/modules")}
         >
-          <span aria-hidden="true">←</span> Back to Modules
+          ΓåÉ Back to Modules
         </button>
+
       </header>
 
-      <main className="ls-content">
+
+      {/* MAIN */}
+      <main className="lecturer-page-content">
+
+        {/* LOADING */}
         {loading && (
-          <section className="ls-status-card">
-            <div className="ls-spinner" />
-            <h2>Loading Students</h2>
-            <p>Please wait while the student list loads.</p>
-          </section>
-        )}
-
-        {error && (
-          <section className="ls-error-card">
-            <span className="ls-error-icon">!</span>
-            <div>
-              <h2>Unable to Load Students</h2>
-              <p>{error}</p>
+          <div className="status-card">
+            <div className="loading-icon">
+              Γƒ│
             </div>
-          </section>
+
+            <h2>
+              Loading Students
+            </h2>
+
+            <p>
+              Please wait while the student list is loaded.
+            </p>
+          </div>
         )}
 
+
+        {/* ERROR */}
+        {error && (
+          <div className="error-card">
+
+            <div className="error-icon">
+              !
+            </div>
+
+            <div>
+              <h3>
+                Unable to Load Students
+              </h3>
+
+              <p>
+                {error}
+              </p>
+            </div>
+
+          </div>
+        )}
+
+
+        {/* CONTENT */}
         {!loading && !error && data && (
           <>
-            <section className="ls-module-card">
-              <div className="ls-module-icon" aria-hidden="true">
-                👨‍🎓
+
+            {/* MODULE INTRO */}
+            <section className="module-hero-card">
+
+              <div className="module-hero-icon">
+                ≡ƒæ¿ΓÇì≡ƒÄô
               </div>
 
-              <div className="ls-module-info">
-                <span className="ls-eyebrow">
+              <div className="module-hero-text">
+
+                <span>
                   MODULE STUDENTS
                 </span>
-                <h2>{data.module.module_code}</h2>
-                <p>{data.module.module_name}</p>
+
+                <h2>
+                  {data.module.module_code}
+                </h2>
+
+                <p>
+                  {data.module.module_name}
+                </p>
+
               </div>
 
-              <div className="ls-total">
-                <strong>{data.total_students}</strong>
-                <span>Registered Students</span>
+              <div className="student-total">
+
+                <strong>
+                  {data.total_students}
+                </strong>
+
+                <span>
+                  Students
+                </span>
+
               </div>
+
             </section>
 
-            <section className="ls-records-card">
-              <div className="ls-records-header">
-                <div className="ls-records-title">
-                  <span className="ls-eyebrow">
+
+            {/* STUDENT LIST */}
+            <section className="students-section">
+
+              <div className="section-heading">
+
+                <div>
+                  <span>
                     REGISTERED STUDENTS
                   </span>
-                  <h2>Student Records</h2>
+
+                  <h2>
+                    Student List
+                  </h2>
+
                   <p>
-                    View student details and registration
-                    information for this module.
+                    Students currently registered for this module.
                   </p>
                 </div>
 
-                <span className="ls-count">
+                <div className="student-count-badge">
                   {data.total_students} Registered
-                </span>
+                </div>
+
               </div>
 
+
               {data.students.length === 0 ? (
-                <div className="ls-empty">
-                  <div className="ls-empty-icon">👥</div>
-                  <h3>No Students Registered</h3>
+
+                <div className="empty-students">
+
+                  <div className="empty-icon">
+                    ≡ƒæÑ
+                  </div>
+
+                  <h3>
+                    No Students Registered
+                  </h3>
+
                   <p>
                     There are currently no students registered
                     for this module.
                   </p>
+
                 </div>
+
               ) : (
-                <div className="ls-table-scroll">
-                  <table className="ls-table">
+
+                <div className="student-table-wrapper">
+
+                  <table className="students-table">
+
                     <thead>
                       <tr>
-                        <th>Student Number</th>
-                        <th>Student</th>
-                        <th>Course</th>
-                        <th>Year</th>
-                        <th>Email Address</th>
+                        <th>
+                          Student Number
+                        </th>
+
+                        <th>
+                          Student
+                        </th>
+
+                        <th>
+                          Course
+                        </th>
+
+                        <th>
+                          Year
+                        </th>
+
+                        <th>
+                          Email
+                        </th>
                       </tr>
                     </thead>
 
                     <tbody>
+
                       {data.students.map((student) => (
+
                         <tr key={student.id}>
+
                           <td>
-                            <span className="ls-student-number">
+                            <span className="student-number">
                               {student.student_number}
                             </span>
                           </td>
 
                           <td>
-                            <div className="ls-student-cell">
-                              <div className="ls-avatar">
+
+                            <div className="student-name-cell">
+
+                              <div className="student-avatar">
                                 {student.first_name
                                   ?.charAt(0)
                                   .toUpperCase()}
                               </div>
 
-                              <div className="ls-student-info">
+                              <div>
                                 <strong>
                                   {student.first_name}{" "}
                                   {student.last_name}
                                 </strong>
-                                <small>Student</small>
+
+                                <small>
+                                  Student
+                                </small>
                               </div>
+
                             </div>
+
                           </td>
 
                           <td>
-                            <span className="ls-course">
+                            <span className="course-badge">
                               {student.course}
                             </span>
                           </td>
 
                           <td>
-                            <span className="ls-year">
+                            <span className="year-badge">
                               Year {student.current_year}
                             </span>
                           </td>
 
                           <td>
-                            <span className="ls-email">
+                            <span className="student-email">
                               {student.email}
                             </span>
                           </td>
+
                         </tr>
+
                       ))}
+
                     </tbody>
+
                   </table>
+
                 </div>
+
               )}
+
             </section>
 
-            <section className="ls-actions-card">
-              <div className="ls-actions-text">
-                <span className="ls-eyebrow">
+
+            {/* QUICK ACTIONS */}
+            <section className="quick-actions-card">
+
+              <div>
+
+                <span>
                   MODULE MANAGEMENT
                 </span>
-                <h2>Continue Managing This Module</h2>
+
+                <h3>
+                  Continue Managing This Module
+                </h3>
+
                 <p>
-                  Access attendance records and review the
-                  overall attendance performance of your students.
+                  View attendance records or see the overall
+                  attendance performance of your students.
                 </p>
+
               </div>
 
-              <div className="ls-actions">
+              <div className="quick-actions-buttons">
+
                 <button
-                  type="button"
-                  className="ls-button ls-button-primary"
                   onClick={() =>
-                    navigate(`/lecturer/attendance/${moduleId}`)
+                    navigate(
+                      `/lecturer/attendance/${moduleId}`
+                    )
                   }
                 >
-                  View Attendance <span>→</span>
+                  View Attendance
                 </button>
 
                 <button
-                  type="button"
-                  className="ls-button ls-button-yellow"
                   onClick={() =>
                     navigate(
                       `/lecturer/attendance/${moduleId}/overall`
                     )
                   }
                 >
-                  Overall Attendance <span>→</span>
+                  Overall Attendance
                 </button>
 
                 <button
-                  type="button"
-                  className="ls-button ls-button-outline"
-                  onClick={() => navigate("/lecturer/modules")}
+                  onClick={() =>
+                    navigate("/lecturer/modules")
+                  }
+                  className="secondary-action"
                 >
                   Back to Modules
                 </button>
+
               </div>
+
             </section>
+
           </>
         )}
+
       </main>
 
-      <footer className="ls-footer">
-        <strong>LabGuard</strong>
-        <span>Laboratory Management System</span>
+
+      {/* FOOTER */}
+      <footer className="lecturer-page-footer">
+
+        <strong>
+          LabGuard
+        </strong>
+
+        <span>
+          Laboratory Management System
+        </span>
+
       </footer>
+
     </div>
   );
 }
