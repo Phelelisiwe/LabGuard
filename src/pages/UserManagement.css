@@ -1,0 +1,211 @@
+
+/* LabGuard student and employee management */
+
+.user-management-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 36px;
+  background: #f2f5fa;
+  color: #142b46;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.user-management-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 30px;
+  margin-bottom: 28px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #041832, #003b70);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(4, 24, 52, 0.12);
+}
+
+.user-management-header h1 {
+  margin: 0 0 10px;
+  font-size: clamp(26px, 4vw, 36px);
+}
+
+.user-management-header p {
+  margin: 0;
+  color: #dce8f6;
+  line-height: 1.6;
+}
+
+.user-management-eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  color: #f2b705;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.user-management-page button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.user-management-page button:hover {
+  transform: translateY(-1px);
+}
+
+.user-management-back {
+  background: #f2b705;
+  color: #041832;
+}
+
+.user-management-back:hover {
+  background: #ffd447;
+}
+
+.user-management-card {
+  overflow-x: auto;
+  padding: 24px;
+  border: 1px solid #e0e8f1;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 20px rgba(4, 24, 52, 0.06);
+}
+
+.user-management-card h2 {
+  margin-top: 0;
+  color: #041832;
+}
+
+.user-management-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.user-management-table thead {
+  background: #041832;
+  color: #fff;
+}
+
+.user-management-table th {
+  padding: 15px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.user-management-table td {
+  padding: 15px 14px;
+  border-bottom: 1px solid #e8edf4;
+  color: #33465d;
+  font-size: 14px;
+}
+
+.user-management-table tbody tr:hover {
+  background: #f5f8fc;
+}
+
+.user-management-delete {
+  background: #c8102e;
+  color: white;
+}
+
+.user-management-delete:hover {
+  background: #a30d25;
+}
+
+.user-management-message {
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  background: #fff0f0;
+  color: #a20b23;
+}
+
+.user-management-empty {
+  padding: 28px 12px;
+  text-align: center;
+  color: #64748b;
+}
+
+@media (max-width: 700px) {
+  .user-management-page {
+    padding: 16px;
+  }
+
+  .user-management-header {
+    padding: 22px;
+  }
+
+  .user-management-card {
+    padding: 14px;
+  }
+}
+
+.user-management-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.user-management-card-heading h2 {
+  margin: 0 0 7px;
+  font-size: 22px;
+}
+
+.user-management-card-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.user-management-count {
+  padding: 9px 14px;
+  border-radius: 20px;
+  background: #fff5cc;
+  color: #624b00;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.user-management-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.user-management-id {
+  font-weight: 700;
+  color: #003b70;
+}
+
+.user-management-name {
+  font-weight: 700;
+  color: #041832 !important;
+}
+
+.user-management-message button {
+  margin-left: 12px;
+  background: #003b70;
+  color: white;
+}
+
+.user-management-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.user-management-footer {
+  margin-top: 24px;
+  text-align: center;
+  color: #718096;
+  font-size: 12px;
+}
+

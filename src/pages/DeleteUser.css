@@ -1,0 +1,230 @@
+
+/* ========================================
+   LABGUARD - DELETE USER PAGE
+   ======================================== */
+
+.delete-user-page {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 36px;
+  background: #f2f5fa;
+  color: #102846;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Header */
+
+.delete-user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 32px;
+  background: linear-gradient(135deg, #041832, #003b70);
+  color: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(4, 24, 52, 0.15);
+}
+
+.delete-user-eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #f2b705;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.delete-user-header h1 {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.2;
+}
+
+.delete-user-header p {
+  margin: 0;
+  color: #dce8f6;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Back button */
+
+.delete-user-back {
+  padding: 13px 20px;
+  border: 0;
+  border-radius: 9px;
+  background: #f2b705;
+  color: #041832;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.delete-user-back:hover {
+  background: #ffd447;
+  transform: translateY(-2px);
+}
+
+/* Main content */
+
+.delete-user-content {
+  max-width: 1150px;
+  margin: 32px auto 0;
+}
+
+/* Warning message */
+
+.delete-user-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 20px;
+  margin-bottom: 30px;
+  border: 1px solid #f2d28b;
+  border-left: 5px solid #f2b705;
+  border-radius: 10px;
+  background: #fff9e8;
+  color: #634b0b;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.delete-user-warning strong {
+  flex-shrink: 0;
+  color: #8b6200;
+}
+
+/* Student and employee cards */
+
+.delete-user-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px;
+}
+
+.delete-user-option {
+  position: relative;
+  overflow: hidden;
+  padding: 32px;
+  border: 1px solid #e1e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 22px rgba(4, 24, 52, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.delete-user-option::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: #f2b705;
+  content: "";
+}
+
+.delete-user-option:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 32px rgba(4, 24, 52, 0.12);
+}
+
+/* ST and EM icons */
+
+.delete-user-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 24px;
+  border-radius: 15px;
+  background: #e8f1fc;
+  color: #003b70;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+/* Card text */
+
+.delete-user-option h2 {
+  margin: 0 0 12px;
+  color: #041832;
+  font-size: 24px;
+}
+
+.delete-user-option p {
+  min-height: 72px;
+  margin: 0 0 26px;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+/* Manage buttons */
+
+.delete-user-option button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 15px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #003b70;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.delete-user-option button:hover {
+  background: #041832;
+  transform: translateY(-1px);
+}
+
+.delete-user-option button span {
+  color: #f2b705;
+  font-size: 20px;
+}
+
+/* Responsive layout */
+
+@media (max-width: 760px) {
+  .delete-user-page {
+    padding: 18px;
+  }
+
+  .delete-user-header {
+    padding: 24px;
+  }
+
+  .delete-user-back {
+    width: 100%;
+  }
+
+  .delete-user-content {
+    margin-top: 22px;
+  }
+
+  .delete-user-options {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .delete-user-option {
+    padding: 24px;
+  }
+
+  .delete-user-option p {
+    min-height: auto;
+  }
+
+  .delete-user-warning {
+    flex-wrap: wrap;
+  }
+}

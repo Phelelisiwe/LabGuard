@@ -1,476 +1,387 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import "./LecturerDashboard.css";
 
-const API_URL = (
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
+const API_URL = "https://labguard-dklp.onrender.com";
 
 function LecturerDashboard() {
   const navigate = useNavigate();
 
-  const [session, setSession] = useState(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [sessionBusy, setSessionBusy] = useState(false);
-  const [sessionMessage, setSessionMessage] = useState("");
+  const [modules, setModules] = useState([]);
+  const [selectedModuleId, setSelectedModuleId] = useState(
+    localStorage.getItem("selected_lecturer_module") || ""
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const email = localStorage.getItem("email") || "Lecturer";
-  const initials = email.charAt(0).toUpperCase();
-
-  const getToken = () =>
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("token");
-
-  // Authenticated API requests
-  const sessionRequest = async (endpoint, method = "GET", body) => {
-    const token = getToken();
-
-    if (!token) {
-      throw new Error("Please log in again. Your login token was not found.");
-    }
-
-    const response = await fetch(
-      `${API_URL}/attendance-session/${endpoint}`,
-      {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        ...(body !== undefined
-          ? { body: JSON.stringify(body) }
-          : {}),
-      }
-    );
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(
-        typeof data.detail === "string"
-          ? data.detail
-          : "The attendance session request failed."
-      );
-    }
-
-    return data;
-  };
-
-  // Load current session
-  const refreshSession = useCallback(async () => {
-    setSessionLoading(true);
-
-    try {
-      const data = await sessionRequest("current");
-      setSession(data.active ? data : null);
-      setSessionMessage("");
-    } catch (error) {
-      setSessionMessage(error.message);
-    } finally {
-      setSessionLoading(false);
-    }
-  }, []);
+  const token = localStorage.getItem("access_token");
 
   useEffect(() => {
-    refreshSession();
-  }, [refreshSession]);
-
-  // Request the lecturer's current GPS location
-  const getCurrentLocation = () =>
-    new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(
-          new Error("Your browser does not support location services.")
-        );
+    const fetchModules = async () => {
+      if (!token) {
+        navigate("/login");
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (error) => {
-          const messages = {
-            1: "Location permission was denied. Allow location access in your browser and try again.",
-            2: "Your location could not be determined. Check your device location settings and try again.",
-            3: "Location request timed out. Please try again.",
-          };
+      try {
+        setLoading(true);
+        setError("");
 
-          reject(
-            new Error(
-              messages[error.code] ||
-                "Could not obtain your location. Please try again."
-            )
+        const response = await axios.get(
+          `${API_URL}/lecturer/modules`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log("LECTURER MODULES RESPONSE:", response.data);
+console.log("NUMBER OF MODULES:", response.data?.length);
+
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data?.modules || [];
+
+        setModules(data);
+
+        const savedModuleId = localStorage.getItem(
+          "selected_lecturer_module"
+        );
+
+        const savedModuleExists = data.some(
+          (module) => String(module.id) === String(savedModuleId)
+        );
+
+        if (savedModuleExists) {
+          setSelectedModuleId(String(savedModuleId));
+        } else if (data.length === 1) {
+          setSelectedModuleId(String(data[0].id));
+          localStorage.setItem(
+            "selected_lecturer_module",
+            String(data[0].id)
           );
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0,
+        } else {
+          setSelectedModuleId("");
+          localStorage.removeItem("selected_lecturer_module");
         }
-      );
-    });
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+          return;
+        }
 
-  // Start a session using GPS
-  const startSession = async () => {
-    setSessionBusy(true);
-    setSessionMessage("");
-
-    try {
-      const location = await getCurrentLocation();
-
-      const data = await sessionRequest(
-        "start",
-        "POST",
-        location
-      );
-
-      if (data.multiple_classes) {
-        setSessionMessage(
-          "More than one class is scheduled at this time. Please resolve the class selection before starting a session."
+        setError(
+          err.response?.data?.detail ||
+            "Unable to load your assigned modules. Please try again."
         );
-        return;
+      } finally {
+        setLoading(false);
       }
+    };
 
-      if (!data.success) {
-        setSessionMessage(
-          data.message || "The attendance session could not be started."
-        );
-        return;
-      }
+    fetchModules();
+  }, [navigate, token]);
 
-      // Refresh from the backend to obtain the authoritative session.
-      await refreshSession();
+  const handleModuleChange = (event) => {
+    const moduleId = event.target.value;
+    setSelectedModuleId(moduleId);
 
-      setSessionMessage(
-        data.already_active
-          ? "Your attendance session is already active."
-          : data.message || "Attendance session started successfully."
-      );
-    } catch (error) {
-      setSessionMessage(error.message);
-    } finally {
-      setSessionBusy(false);
+    if (moduleId) {
+      localStorage.setItem("selected_lecturer_module", moduleId);
+    } else {
+      localStorage.removeItem("selected_lecturer_module");
     }
   };
 
-  // Close the active session
-  const stopSession = async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to stop the attendance session?"
-      )
-    ) {
+  const openModulePage = (page) => {
+    if (!selectedModuleId) {
+      setError("Please select a module first.");
       return;
     }
 
-    setSessionBusy(true);
-    setSessionMessage("");
+    setError("");
 
-    try {
-      const data = await sessionRequest("close", "POST");
-      setSession(null);
-      setSessionMessage(
-        data.message || "Attendance session closed successfully."
-      );
-    } catch (error) {
-      setSessionMessage(error.message);
-    } finally {
-      setSessionBusy(false);
-    }
+    const routes = {
+      students: `/lecturer/students/${selectedModuleId}`,
+      attendance: `/lecturer/attendance/${selectedModuleId}`,
+      overall: `/lecturer/attendance/${selectedModuleId}/overall`,
+      prediction: `/lecturer/attendance/${selectedModuleId}/prediction`,
+    };
+
+    navigate(routes[page]);
   };
 
-  const logout = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
+  const selectedModule = modules.find(
+    (module) => String(module.id) === String(selectedModuleId)
+  );
+
+  const lecturerEmail =
+    localStorage.getItem("email") || "Lecturer";
+
+  const lecturerInitial = lecturerEmail.charAt(0).toUpperCase();
 
   return (
-    <div className="modern-lecturer-dashboard">
-      {/* NAVIGATION */}
-      <header className="modern-dashboard-nav">
-        <div
-          className="modern-dashboard-brand"
-          onClick={() => navigate("/lecturer")}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              navigate("/lecturer");
-            }
-          }}
-        >
-          <div className="modern-dashboard-logo">LG</div>
-          <div className="modern-dashboard-brand-text">
-            <strong>LabGuard</strong>
-            <span>Lecturer Portal</span>
-          </div>
+    <div className="lecturer-dashboard">
+      <aside className="lecturer-sidebar">
+        <div className="lecturer-logo">
+          <span className="lecturer-logo-icon">L</span>
+          <span>LabGuard</span>
         </div>
 
-        <div className="modern-dashboard-nav-right">
-          <div className="modern-dashboard-user">
-            <div className="modern-dashboard-avatar">{initials}</div>
-            <div className="modern-dashboard-user-info">
-              <strong>Lecturer</strong>
-              <span>{email}</span>
-            </div>
-          </div>
-
+        <nav className="lecturer-sidebar-nav">
           <button
-            className="modern-dashboard-logout"
-            onClick={logout}
+            className="lecturer-nav-item active"
+            onClick={() => navigate("/lecturer")}
           >
-            <span>↪</span> Logout
+            <span>▦</span>
+            Dashboard
           </button>
-        </div>
-      </header>
-
-      <main className="modern-dashboard-content">
-        {/* WELCOME */}
-        <section className="modern-dashboard-welcome">
-          <div className="modern-dashboard-welcome-text">
-            <div className="modern-dashboard-eyebrow">
-              <span></span> LECTURER WORKSPACE
-            </div>
-            <h1>Welcome back</h1>
-            <p>
-              Manage your modules and monitor student attendance
-              from one place.
-            </p>
-          </div>
 
           <button
-            className="modern-dashboard-primary"
+            className="lecturer-nav-item"
             onClick={() => navigate("/lecturer/modules")}
           >
-            View My Modules
-            <span className="modern-dashboard-arrow">→</span>
+            <span>▤</span>
+            My Modules
           </button>
+
+          <button
+            className="lecturer-nav-item"
+            onClick={() => navigate("/lecturer/update-information")}
+          >
+            <span>⚙</span>
+            Update Information
+          </button>
+        </nav>
+
+        <div className="lecturer-sidebar-bottom">
+          <div className="lecturer-sidebar-user">
+            <div className="lecturer-avatar">{lecturerInitial}</div>
+            <div className="lecturer-user-details">
+              <strong>Lecturer</strong>
+              <span>{lecturerEmail}</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main className="lecturer-main">
+        <header className="lecturer-topbar">
+          <div>
+            <p className="lecturer-eyebrow">LECTURER PORTAL</p>
+            <h1>Dashboard</h1>
+          </div>
+
+          <div className="lecturer-topbar-profile">
+            <div className="lecturer-avatar">{lecturerInitial}</div>
+            <span>{lecturerEmail}</span>
+          </div>
+        </header>
+
+        <section className="lecturer-welcome">
+          <div>
+            <p className="lecturer-eyebrow">WELCOME BACK</p>
+            <h2>Manage your modules</h2>
+            <p>
+              Choose one of your assigned modules to manage its students
+              and attendance records.
+            </p>
+          </div>
+          <div className="lecturer-welcome-icon">▤</div>
         </section>
 
-        {/* ATTENDANCE SESSION */}
-        <section className="modern-dashboard-section">
-          <div className="modern-dashboard-section-heading">
+        {error && (
+          <div className="lecturer-error" role="alert">
+            {error}
+          </div>
+        )}
+
+        <section className="lecturer-module-panel">
+          <div className="lecturer-section-heading">
             <div>
-              <span>CLASS MANAGEMENT</span>
-              <h2>Attendance Session</h2>
-            </div>
-
-            {!sessionLoading && (
-              <div className="modern-workflow-status">
-                <span></span>
-                {session ? "Session active" : "No active session"}
-              </div>
-            )}
-          </div>
-
-          <div className="modern-dashboard-tool">
-            <div className="modern-tool-content">
-              <span className="modern-tool-label">
-                {session ? "SESSION IN PROGRESS" : "SESSION CONTROL"}
-              </span>
-
-              <h3>
-                {session
-                  ? "Your class is open"
-                  : "Manage class attendance"}
-              </h3>
-
-              {sessionLoading ? (
-                <p>Checking your attendance session...</p>
-              ) : session ? (
-                <>
-                  <p>
-                    <strong>Module:</strong>{" "}
-                    {session.module_code || session.module_id || "Not available"}
-                  </p>
-
-                  {session.module_name && (
-                    <p>
-                      <strong>Module name:</strong> {session.module_name}
-                    </p>
-                  )}
-
-                  <p>
-                    <strong>Laboratory:</strong>{" "}
-                    {session.laboratory || "Not specified"}
-                  </p>
-
-                  {session.opened_at && (
-                    <p>
-                      <strong>Started:</strong> {session.opened_at}
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    className="modern-dashboard-logout"
-                    onClick={stopSession}
-                    disabled={sessionBusy}
-                  >
-                    {sessionBusy ? "Please wait..." : "Stop Session"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p>
-                    Start your scheduled class and allow location
-                    access. The location will be saved for the
-                    website backup attendance method. ESP32 fingerprint
-                    attendance remains available separately.
-                  </p>
-
-                  <button
-                    type="button"
-                    className="modern-dashboard-primary"
-                    onClick={startSession}
-                    disabled={sessionBusy}
-                  >
-                    {sessionBusy
-                      ? "Getting location..."
-                      : "Start Session"}
-                    <span className="modern-dashboard-arrow">→</span>
-                  </button>
-                </>
-              )}
-
-              {sessionMessage && (
-                <p role="status" aria-live="polite">
-                  {sessionMessage}
-                </p>
-              )}
-
-              {!sessionLoading && (
-                <button
-                  type="button"
-                  className="modern-dashboard-view-all"
-                  onClick={refreshSession}
-                  disabled={sessionBusy}
-                >
-                  Refresh session status <span>↻</span>
-                </button>
-              )}
+              <h2>Select a Module</h2>
+              <p>
+                {loading
+                  ? "Loading your assigned modules..."
+                  : `${modules.length} assigned module${modules.length === 1 ? "" : "s"}`}
+              </p>
             </div>
           </div>
-        </section>
 
-        {/* QUICK ACCESS */}
-        <section className="modern-dashboard-section">
-          <div className="modern-dashboard-section-heading">
-            <div>
-              <span>LECTURER TOOLS</span>
-              <h2>Quick access</h2>
+          {loading ? (
+            <div className="lecturer-state">
+              <div className="lecturer-spinner" />
+              <p>Loading modules...</p>
             </div>
-            <button
-              className="modern-dashboard-view-all"
-              onClick={() => navigate("/lecturer/modules")}
-            >
-              View all <span>→</span>
-            </button>
-          </div>
-
-          <div className="modern-dashboard-tools">
-            {[
-              {
-                icon: "▦",
-                color: "blue",
-                label: "MODULES",
-                title: "My Modules",
-                description: "View your assigned teaching modules.",
-              },
-              {
-                icon: "✓",
-                color: "yellow",
-                label: "ATTENDANCE",
-                title: "Attendance",
-                description: "Review attendance records by module.",
-              },
-              {
-                icon: "👥",
-                color: "green",
-                label: "STUDENTS",
-                title: "Student Records",
-                description: "View students registered in your modules.",
-              },
-              {
-                icon: "↗",
-                color: "purple",
-                label: "INSIGHTS",
-                title: "Attendance Prediction",
-                description: "View attendance predictions for your modules.",
-              },
-            ].map((tool) => (
+          ) : modules.length === 0 ? (
+            <div className="lecturer-state">
+              <div className="lecturer-empty-icon">▤</div>
+              <h3>No modules assigned</h3>
+              <p>
+                Your assigned modules will appear here. Contact the
+                administrator if you believe this is incorrect.
+              </p>
               <button
-                key={tool.title}
-                className="modern-dashboard-tool"
+                className="lecturer-secondary-button"
                 onClick={() => navigate("/lecturer/modules")}
               >
-                <div className={`modern-tool-icon ${tool.color}`}>
-                  {tool.icon}
-                </div>
-                <div className="modern-tool-content">
-                  <span className="modern-tool-label">{tool.label}</span>
-                  <h3>{tool.title}</h3>
-                  <p>{tool.description}</p>
-                </div>
-                <span className="modern-tool-arrow">→</span>
+                View My Modules
               </button>
-            ))}
-          </div>
-        </section>
-
-        {/* WORKFLOW */}
-        <section className="modern-dashboard-workflow">
-          <div className="modern-dashboard-workflow-heading">
-            <div>
-              <span>ATTENDANCE WORKFLOW</span>
-              <h2>From module to insight</h2>
             </div>
-            <div className="modern-workflow-status">
-              <span></span> System ready
-            </div>
-          </div>
+          ) : (
+            <>
+              <label
+                className="lecturer-field-label"
+                htmlFor="lecturer-module-select"
+              >
+                Choose your module
+              </label>
 
-          <div className="modern-workflow-grid">
-            {[
-              ["01", "Choose a module", "Open one of your assigned modules."],
-              ["02", "Review attendance", "Check student attendance and class records."],
-              ["03", "Analyse results", "Review results and attendance predictions."],
-            ].map(([number, title, description], index) => (
-              <div key={number} className="modern-workflow-step">
-                <div className="modern-step-number">{number}</div>
+              <select
+                id="lecturer-module-select"
+                className="lecturer-module-select"
+                value={selectedModuleId}
+                onChange={handleModuleChange}
+              >
+                <option value="">-- Select a module --</option>
+
+                {modules.map((module) => (
+                  <option key={module.id} value={String(module.id)}>
+                    {module.module_code} — {module.module_name}
+                    {module.level ? ` (Level ${module.level})` : ""}
+                  </option>
+                ))}
+              </select>
+
+              {selectedModule && (
+                <div className="lecturer-selected-module">
+                  <div className="lecturer-selected-module-icon">▤</div>
+                  <div>
+                    <p className="lecturer-eyebrow">SELECTED MODULE</p>
+                    <h3>{selectedModule.module_code}</h3>
+                    <p>{selectedModule.module_name}</p>
+                    {selectedModule.level && (
+                      <span className="lecturer-level-tag">
+                        Level {selectedModule.level}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="lecturer-section-heading lecturer-actions-heading">
                 <div>
-                  <h3>{title}</h3>
-                  <p>{description}</p>
+                  <h2>Module Management</h2>
+                  <p>
+                    Select a module above to open its records and reports.
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="lecturer-action-grid">
+                <button
+                  className="lecturer-action-card"
+                  disabled={!selectedModuleId}
+                  onClick={() => openModulePage("students")}
+                >
+                  <span className="lecturer-action-icon students-icon">
+                    ♙
+                  </span>
+                  <span className="lecturer-action-title">
+                    Student Records
+                  </span>
+                  <span className="lecturer-action-description">
+                    View students registered for this module.
+                  </span>
+                  <span className="lecturer-action-link">
+                    Open records →
+                  </span>
+                </button>
+
+                <button
+                  className="lecturer-action-card"
+                  disabled={!selectedModuleId}
+                  onClick={() => openModulePage("attendance")}
+                >
+                  <span className="lecturer-action-icon attendance-icon">
+                    ✓
+                  </span>
+                  <span className="lecturer-action-title">
+                    Attendance Register
+                  </span>
+                  <span className="lecturer-action-description">
+                    View attendance records for this module.
+                  </span>
+                  <span className="lecturer-action-link">
+                    View attendance →
+                  </span>
+                </button>
+
+                <button
+                  className="lecturer-action-card"
+                  disabled={!selectedModuleId}
+                  onClick={() => openModulePage("overall")}
+                >
+                  <span className="lecturer-action-icon overall-icon">
+                    ▥
+                  </span>
+                  <span className="lecturer-action-title">
+                    Overall Attendance
+                  </span>
+                  <span className="lecturer-action-description">
+                    Review overall attendance for this module.
+                  </span>
+                  <span className="lecturer-action-link">
+                    View overview →
+                  </span>
+                </button>
+
+                <button
+                  className="lecturer-action-card"
+                  disabled={!selectedModuleId}
+                  onClick={() => openModulePage("prediction")}
+                >
+                  <span className="lecturer-action-icon prediction-icon">
+                    ↗
+                  </span>
+                  <span className="lecturer-action-title">
+                    Attendance Predictions
+                  </span>
+                  <span className="lecturer-action-description">
+                    Open the module's attendance prediction page.
+                  </span>
+                  <span className="lecturer-action-link">
+                    View predictions →
+                  </span>
+                </button>
+              </div>
+
+              <div className="lecturer-module-footer">
+                <span>
+                  {selectedModule
+                    ? `Managing: ${selectedModule.module_code}`
+                    : "No module selected"}
+                </span>
+
+                <button
+                  className="lecturer-secondary-button"
+                  disabled={!selectedModuleId}
+                  onClick={() => navigate("/lecturer/modules")}
+                >
+                  View All Modules
+                </button>
+              </div>
+            </>
+          )}
         </section>
 
-        {/* ACCOUNT */}
-        <section className="modern-dashboard-account">
-          <div>
-            <span>ACCOUNT</span>
-            <h2>Manage your lecturer profile</h2>
-            <p>Keep your personal and account information up to date.</p>
-          </div>
-          <button
-            className="modern-dashboard-secondary"
-            onClick={() => navigate("/update-information")}
-          >
-            Update Information <span>→</span>
-          </button>
-        </section>
+        <footer className="lecturer-footer">
+          © 2026 LabGuard. All rights reserved.
+        </footer>
       </main>
-
-      <footer className="modern-dashboard-footer">
-        <span>© 2026 LabGuard</span>
-        <span>Lecturer Portal</span>
-      </footer>
     </div>
   );
 }

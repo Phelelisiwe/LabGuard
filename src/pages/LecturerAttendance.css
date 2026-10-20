@@ -1,0 +1,550 @@
+
+/* =========================================
+   LABGUARD - LECTURER ATTENDANCE
+   ========================================= */
+
+.lecturer-attendance-page {
+  --attendance-navy: #041832;
+  --attendance-blue: #003b70;
+  --attendance-yellow: #f2b705;
+  --attendance-red: #c8102e;
+  --attendance-text: #172b4d;
+  --attendance-muted: #64748b;
+  --attendance-border: #e2e8f0;
+  --attendance-background: #f4f7fb;
+
+  min-height: 100vh;
+  background: var(--attendance-background);
+  color: var(--attendance-text);
+  box-sizing: border-box;
+}
+
+.lecturer-attendance-page *,
+.lecturer-attendance-page *::before,
+.lecturer-attendance-page *::after {
+  box-sizing: border-box;
+}
+
+/* Header */
+.lecturer-attendance-page .lecturer-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 32px clamp(20px, 5vw, 64px);
+  background: var(--attendance-navy);
+  color: white;
+  border-bottom: 5px solid var(--attendance-yellow);
+}
+
+.lecturer-attendance-page .page-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.lecturer-attendance-page .page-label {
+  display: inline-block;
+  color: var(--attendance-yellow);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.lecturer-attendance-page .page-heading h1 {
+  color: white;
+  font-size: clamp(25px, 3vw, 36px);
+  line-height: 1.3;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  writing-mode: horizontal-tb;
+}
+
+.lecturer-attendance-page .page-heading p {
+  color: #d5dfed;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.lecturer-attendance-page .back-button {
+  padding: 12px 18px;
+  border: 1px solid #8293a8;
+  border-radius: 9px;
+  background: transparent;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.lecturer-attendance-page .back-button:hover {
+  background: var(--attendance-yellow);
+  color: var(--attendance-navy);
+  border-color: var(--attendance-yellow);
+}
+
+/* Main content */
+.lecturer-attendance-page .lecturer-page-content {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 32px clamp(16px, 4vw, 48px);
+}
+
+/* Loading and error states */
+.lecturer-attendance-page .status-card,
+.lecturer-attendance-page .error-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 28px;
+  margin-bottom: 24px;
+  background: white;
+  border: 1px solid var(--attendance-border);
+  border-radius: 14px;
+  box-shadow: 0 5px 20px rgba(4, 24, 50, 0.05);
+}
+
+.lecturer-attendance-page .status-card {
+  flex-direction: column;
+  text-align: center;
+}
+
+.lecturer-attendance-page .loading-icon {
+  color: var(--attendance-blue);
+  font-size: 38px;
+}
+
+.lecturer-attendance-page .error-card {
+  border-left: 5px solid var(--attendance-red);
+}
+
+.lecturer-attendance-page .error-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fde8ec;
+  color: var(--attendance-red);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.lecturer-attendance-page .status-card h2,
+.lecturer-attendance-page .error-card h3 {
+  margin: 0 0 8px;
+  color: var(--attendance-navy);
+}
+
+.lecturer-attendance-page .status-card p,
+.lecturer-attendance-page .error-card p {
+  margin: 0;
+  color: var(--attendance-muted);
+  line-height: 1.6;
+}
+
+/* Attendance summary */
+.lecturer-attendance-page .attendance-hero-card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  padding: 28px;
+  margin-bottom: 28px;
+  background: white;
+  border: 1px solid var(--attendance-border);
+  border-top: 5px solid var(--attendance-yellow);
+  border-radius: 15px;
+  box-shadow: 0 8px 24px rgba(4, 24, 50, 0.07);
+}
+
+.lecturer-attendance-page .attendance-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
+  background: var(--attendance-navy);
+  color: var(--attendance-yellow);
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.lecturer-attendance-page .attendance-hero-text {
+  min-width: 0;
+  width: 100%;
+}
+
+.lecturer-attendance-page .attendance-hero-text > span,
+.lecturer-attendance-page .attendance-actions-description > span,
+.lecturer-attendance-page .section-heading > div > span {
+  display: block;
+  color: var(--attendance-blue);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.lecturer-attendance-page .attendance-hero-text h2 {
+  margin: 0 0 7px;
+  color: var(--attendance-navy);
+  font-size: clamp(22px, 2.5vw, 30px);
+  line-height: 1.35;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  writing-mode: horizontal-tb;
+}
+
+.lecturer-attendance-page .attendance-hero-text p {
+  margin: 0;
+  color: var(--attendance-muted);
+  line-height: 1.6;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  writing-mode: horizontal-tb;
+}
+
+.lecturer-attendance-page .attendance-total {
+  min-width: 150px;
+  padding: 18px;
+  text-align: center;
+  background: #fff8db;
+  border: 1px solid #f6df86;
+  border-radius: 12px;
+}
+
+.lecturer-attendance-page .attendance-total strong {
+  display: block;
+  color: var(--attendance-navy);
+  font-size: 32px;
+  line-height: 1.3;
+}
+
+.lecturer-attendance-page .attendance-total span {
+  display: block;
+  color: #5b4a17;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* Manage attendance card */
+.lecturer-attendance-page .attendance-actions-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 26px;
+  margin-bottom: 32px;
+  background: var(--attendance-navy);
+  color: white;
+  border-radius: 15px;
+  box-shadow: 0 8px 22px rgba(4, 24, 50, 0.12);
+}
+
+.lecturer-attendance-page .attendance-actions-description {
+  flex: 1;
+  min-width: 220px;
+}
+
+.lecturer-attendance-page .attendance-actions-description > span {
+  color: var(--attendance-yellow);
+}
+
+.lecturer-attendance-page .attendance-actions-description h2 {
+  color: white;
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.lecturer-attendance-page .attendance-actions-description p {
+  color: #d5dfed;
+  margin: 0;
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+.lecturer-attendance-page .quick-actions-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lecturer-attendance-page .quick-actions-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid var(--attendance-yellow);
+  border-radius: 8px;
+  background: var(--attendance-yellow);
+  color: var(--attendance-navy);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.lecturer-attendance-page .quick-actions-buttons button:hover {
+  transform: translateY(-2px);
+  background: white;
+  border-color: white;
+}
+
+.lecturer-attendance-page .quick-actions-buttons button span {
+  font-size: 17px;
+}
+
+/* Attendance records section */
+.lecturer-attendance-page .attendance-section {
+  width: 100%;
+  padding: 26px;
+  background: white;
+  border: 1px solid var(--attendance-border);
+  border-radius: 15px;
+  box-shadow: 0 7px 24px rgba(4, 24, 50, 0.05);
+}
+
+.lecturer-attendance-page .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.lecturer-attendance-page .section-heading h2 {
+  margin: 0 0 8px;
+  color: var(--attendance-navy);
+  font-size: 24px;
+}
+
+.lecturer-attendance-page .section-heading p {
+  margin: 0;
+  color: var(--attendance-muted);
+  line-height: 1.6;
+}
+
+.lecturer-attendance-page .attendance-count-badge {
+  padding: 10px 15px;
+  border: 1px solid #f2d66b;
+  border-radius: 30px;
+  background: #fff8db;
+  color: var(--attendance-navy);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Table */
+.lecturer-attendance-page .attendance-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--attendance-border);
+  border-radius: 10px;
+}
+
+.lecturer-attendance-page .attendance-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.lecturer-attendance-page .attendance-table thead {
+  background: var(--attendance-navy);
+}
+
+.lecturer-attendance-page .attendance-table th {
+  padding: 16px;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.lecturer-attendance-page .attendance-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--attendance-border);
+  color: var(--attendance-text);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.lecturer-attendance-page .attendance-table tbody tr:nth-child(even) {
+  background: #f7f9fc;
+}
+
+.lecturer-attendance-page .attendance-table tbody tr:hover {
+  background: #fff9e6;
+}
+
+.lecturer-attendance-page .attendance-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lecturer-attendance-page .student-number {
+  color: var(--attendance-blue);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.lecturer-attendance-page .student-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.lecturer-attendance-page .student-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--attendance-blue);
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.lecturer-attendance-page .date-value {
+  white-space: nowrap;
+}
+
+.lecturer-attendance-page .status-present {
+  display: inline-block;
+  padding: 6px 11px;
+  border: 1px solid #b8e4ca;
+  border-radius: 20px;
+  background: #e8f7ed;
+  color: #17683a;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Empty state */
+.lecturer-attendance-page .empty-attendance {
+  padding: 48px 20px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.lecturer-attendance-page .empty-icon {
+  margin-bottom: 12px;
+  font-size: 42px;
+}
+
+.lecturer-attendance-page .empty-attendance h3 {
+  margin: 0 0 8px;
+  color: var(--attendance-navy);
+  font-size: 20px;
+}
+
+.lecturer-attendance-page .empty-attendance p {
+  margin: 0;
+  color: var(--attendance-muted);
+  line-height: 1.6;
+}
+
+/* Footer */
+.lecturer-attendance-page .lecturer-page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 22px;
+  background: var(--attendance-navy);
+  color: #d5dfed;
+  border-top: 4px solid var(--attendance-yellow);
+  font-size: 13px;
+}
+
+.lecturer-attendance-page .lecturer-page-footer strong {
+  color: var(--attendance-yellow);
+  font-size: 18px;
+}
+
+/* Responsive layout */
+@media (max-width: 760px) {
+  .lecturer-attendance-page .lecturer-page-header {
+    align-items: flex-start;
+    padding: 24px 20px;
+  }
+
+  .lecturer-attendance-page .back-button {
+    width: 100%;
+  }
+
+  .lecturer-attendance-page .attendance-hero-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .lecturer-attendance-page .attendance-hero-icon {
+    width: 46px;
+    height: 46px;
+    font-size: 24px;
+  }
+
+  .lecturer-attendance-page .attendance-total {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .lecturer-attendance-page .attendance-actions-card {
+    padding: 20px;
+  }
+
+  .lecturer-attendance-page .quick-actions-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .lecturer-attendance-page .quick-actions-buttons button {
+    width: 100%;
+  }
+
+  .lecturer-attendance-page .attendance-section {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .lecturer-attendance-page .lecturer-page-content {
+    padding: 20px 12px;
+  }
+
+  .lecturer-attendance-page .attendance-hero-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lecturer-attendance-page .attendance-hero-icon {
+    width: 46px;
+  }
+
+  .lecturer-attendance-page .section-heading h2 {
+    font-size: 21px;
+  }
+}

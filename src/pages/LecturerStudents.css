@@ -1,0 +1,723 @@
+
+/* =========================================
+   LABGUARD - LECTURER STUDENT RECORDS
+   All styles are scoped to this page.
+   ========================================= */
+
+.lecturer-students-page {
+  --ls-navy: #071d3a;
+  --ls-blue: #103b70;
+  --ls-yellow: #f2b705;
+  --ls-red: #c8102e;
+  --ls-text: #1c2b3e;
+  --ls-muted: #68778a;
+  --ls-border: #e2e8f0;
+  --ls-background: #f3f6fb;
+
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32px clamp(16px, 4vw, 52px);
+  background: var(--ls-background);
+  color: var(--ls-text);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Reset layout and text behaviour on this page only */
+.lecturer-students-page,
+.lecturer-students-page * {
+  box-sizing: border-box;
+}
+
+.lecturer-students-page h1,
+.lecturer-students-page h2,
+.lecturer-students-page h3,
+.lecturer-students-page p,
+.lecturer-students-page span,
+.lecturer-students-page strong,
+.lecturer-students-page small {
+  writing-mode: horizontal-tb !important;
+  word-break: normal !important;
+  overflow-wrap: break-word;
+  text-orientation: mixed;
+}
+
+/* HEADER */
+
+.lecturer-students-page .ls-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 auto 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #dce4ee;
+}
+
+.lecturer-students-page .ls-header-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lecturer-students-page .ls-eyebrow {
+  display: block;
+  width: auto;
+  margin-bottom: 9px;
+  color: #8b6500;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.lecturer-students-page .ls-header h1 {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  color: var(--ls-navy);
+  font-size: clamp(25px, 3vw, 36px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+}
+
+.lecturer-students-page .ls-header p {
+  display: block;
+  width: auto;
+  max-width: 700px;
+  margin: 10px 0 0;
+  color: var(--ls-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.lecturer-students-page .ls-back-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 11px 17px;
+  border: 1px solid #d5deea;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ls-navy);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.lecturer-students-page .ls-back-button:hover {
+  background: #edf3fb;
+  border-color: #9aadc6;
+}
+
+/* MAIN CONTENT */
+
+.lecturer-students-page .ls-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1500px;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+/* MODULE SUMMARY */
+
+.lecturer-students-page .ls-module-card {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) 175px;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  min-width: 0;
+  padding: 27px;
+  border: 1px solid #e0e8f2;
+  border-top: 5px solid var(--ls-yellow);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(7, 29, 58, 0.05);
+}
+
+.lecturer-students-page .ls-module-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 14px;
+  background: #eaf1fb;
+  font-size: 32px;
+}
+
+.lecturer-students-page .ls-module-info {
+  min-width: 0;
+  width: 100%;
+}
+
+.lecturer-students-page .ls-module-info h2 {
+  display: block;
+  width: auto;
+  margin: 0;
+  color: var(--ls-navy);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.lecturer-students-page .ls-module-info p {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  margin: 5px 0 0;
+  color: var(--ls-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.lecturer-students-page .ls-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 95px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f2f6fc;
+  text-align: center;
+}
+
+.lecturer-students-page .ls-total strong {
+  display: block;
+  width: auto;
+  color: var(--ls-blue);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.lecturer-students-page .ls-total span {
+  display: block;
+  width: auto;
+  margin-top: 7px;
+  color: var(--ls-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* STUDENT RECORDS */
+
+.lecturer-students-page .ls-records-card {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 28px;
+  border: 1px solid var(--ls-border);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(7, 29, 58, 0.045);
+}
+
+.lecturer-students-page .ls-records-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 25px;
+  padding-bottom: 21px;
+  border-bottom: 1px solid #e9eef5;
+}
+
+.lecturer-students-page .ls-records-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.lecturer-students-page .ls-records-title h2 {
+  display: block;
+  width: auto;
+  margin: 0;
+  color: var(--ls-navy);
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.lecturer-students-page .ls-records-title p {
+  display: block;
+  width: auto;
+  max-width: 650px;
+  margin: 8px 0 0;
+  color: var(--ls-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.lecturer-students-page .ls-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #f0df9c;
+  border-radius: 30px;
+  background: #fff9e5;
+  color: #785800;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* TABLE */
+
+.lecturer-students-page .ls-table-scroll {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid #e4eaf2;
+  border-radius: 10px;
+}
+
+.lecturer-students-page .ls-table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
+  background: #fff;
+}
+
+.lecturer-students-page .ls-table thead {
+  background: var(--ls-navy);
+}
+
+.lecturer-students-page .ls-table th {
+  padding: 16px 18px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.lecturer-students-page .ls-table td {
+  padding: 17px 18px;
+  border-bottom: 1px solid #edf0f5;
+  color: var(--ls-text);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.lecturer-students-page .ls-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lecturer-students-page .ls-table tbody tr:hover {
+  background: #f7faff;
+}
+
+.lecturer-students-page .ls-student-number {
+  display: inline-block;
+  width: auto;
+  color: var(--ls-blue);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.lecturer-students-page .ls-student-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 170px;
+}
+
+.lecturer-students-page .ls-avatar {
+  display: flex;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #eaf1fb;
+  color: var(--ls-blue);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.lecturer-students-page .ls-student-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  width: auto;
+}
+
+.lecturer-students-page .ls-student-info strong {
+  display: block;
+  width: auto;
+  color: var(--ls-navy);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+.lecturer-students-page .ls-student-info small {
+  display: block;
+  width: auto;
+  color: var(--ls-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.lecturer-students-page .ls-course,
+.lecturer-students-page .ls-year {
+  display: inline-block;
+  width: auto;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: #edf3fb;
+  color: var(--ls-blue);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lecturer-students-page .ls-year {
+  background: #fff7dc;
+  color: #785800;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.lecturer-students-page .ls-email {
+  display: inline-block;
+  width: auto;
+  color: #43546b;
+  white-space: nowrap;
+}
+
+/* EMPTY, LOADING AND ERROR STATES */
+
+.lecturer-students-page .ls-empty,
+.lecturer-students-page .ls-status-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 240px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.lecturer-students-page .ls-empty-icon {
+  margin-bottom: 12px;
+  font-size: 38px;
+}
+
+.lecturer-students-page .ls-empty h3,
+.lecturer-students-page .ls-status-card h2 {
+  display: block;
+  width: auto;
+  margin: 0 0 8px;
+  color: var(--ls-navy);
+  font-size: 21px;
+  line-height: 1.4;
+}
+
+.lecturer-students-page .ls-empty p,
+.lecturer-students-page .ls-status-card p {
+  display: block;
+  width: auto;
+  max-width: 500px;
+  margin: 0;
+  color: var(--ls-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.lecturer-students-page .ls-spinner {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 18px;
+  border: 4px solid #e0e8f2;
+  border-top-color: var(--ls-yellow);
+  border-radius: 50%;
+  animation: ls-spin 0.8s linear infinite;
+}
+
+@keyframes ls-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lecturer-students-page .ls-error-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  width: 100%;
+  padding: 22px;
+  border: 1px solid #f1c4ca;
+  border-radius: 12px;
+  background: #fff1f2;
+}
+
+.lecturer-students-page .ls-error-icon {
+  display: flex;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ls-red);
+  color: #fff;
+  font-weight: 800;
+}
+
+.lecturer-students-page .ls-error-card h2 {
+  margin: 0 0 6px;
+  color: #9f1239;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.lecturer-students-page .ls-error-card p {
+  margin: 0;
+  color: #881337;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* QUICK ACTIONS */
+
+.lecturer-students-page .ls-actions-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  width: 100%;
+  min-width: 0;
+  padding: 28px;
+  border-radius: 15px;
+  background: var(--ls-navy);
+  box-shadow: 0 8px 24px rgba(7, 29, 58, 0.12);
+}
+
+.lecturer-students-page .ls-actions-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lecturer-students-page .ls-actions-text .ls-eyebrow {
+  color: var(--ls-yellow);
+}
+
+.lecturer-students-page .ls-actions-text h2 {
+  display: block;
+  width: auto;
+  margin: 0;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.lecturer-students-page .ls-actions-text p {
+  display: block;
+  width: auto;
+  max-width: 620px;
+  margin: 9px 0 0;
+  color: #d1dbea;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.lecturer-students-page .ls-actions {
+  display: flex;
+  flex: 0 1 280px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 210px;
+}
+
+.lecturer-students-page .ls-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.lecturer-students-page .ls-button:hover {
+  transform: translateY(-1px);
+}
+
+.lecturer-students-page .ls-button-primary {
+  background: #fff;
+  color: var(--ls-navy);
+}
+
+.lecturer-students-page .ls-button-primary:hover {
+  background: #eaf1fb;
+}
+
+.lecturer-students-page .ls-button-yellow {
+  background: var(--ls-yellow);
+  color: #17243a;
+}
+
+.lecturer-students-page .ls-button-yellow:hover {
+  background: #ffd447;
+}
+
+.lecturer-students-page .ls-button-outline {
+  border-color: #63748b;
+  background: transparent;
+  color: #fff;
+}
+
+.lecturer-students-page .ls-button-outline:hover {
+  background: #183455;
+}
+
+/* FOOTER */
+
+.lecturer-students-page .ls-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 1500px;
+  margin: 32px auto 0;
+  padding-top: 20px;
+  border-top: 1px solid #dce4ee;
+}
+
+.lecturer-students-page .ls-footer strong {
+  color: var(--ls-navy);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.lecturer-students-page .ls-footer span {
+  color: var(--ls-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .lecturer-students-page .ls-actions-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lecturer-students-page .ls-actions {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .lecturer-students-page {
+    padding: 22px 14px;
+  }
+
+  .lecturer-students-page .ls-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .lecturer-students-page .ls-header h1 {
+    font-size: 27px;
+  }
+
+  .lecturer-students-page .ls-module-card {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 14px;
+    padding: 19px;
+  }
+
+  .lecturer-students-page .ls-module-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 25px;
+  }
+
+  .lecturer-students-page .ls-module-info h2 {
+    font-size: 21px;
+  }
+
+  .lecturer-students-page .ls-total {
+    grid-column: 1 / -1;
+    min-height: 76px;
+  }
+
+  .lecturer-students-page .ls-records-card {
+    padding: 19px 14px;
+  }
+
+  .lecturer-students-page .ls-records-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .lecturer-students-page .ls-records-title h2 {
+    font-size: 23px;
+  }
+
+  .lecturer-students-page .ls-actions-card {
+    padding: 21px;
+  }
+
+  .lecturer-students-page .ls-actions-text h2 {
+    font-size: 20px;
+  }
+
+  .lecturer-students-page .ls-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

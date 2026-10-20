@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import "./LecturerAttendance.css";
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
@@ -52,26 +54,18 @@ function LecturerAttendance() {
   }, [moduleId, navigate]);
 
   return (
-    <div className="dashboard lecturer-page">
-
-      {/* HEADER */}
+    <div className="dashboard lecturer-page lecturer-attendance-page">
       <header className="lecturer-page-header">
-
         <div className="page-heading">
-
-          <span className="page-label">
-            LECTURER PORTAL
-          </span>
+          <span className="page-label">LECTURER PORTAL</span>
 
           <h1>
             {data?.module?.module_code || "Module"} Attendance
           </h1>
 
           <p>
-            {data?.module?.module_name ||
-              "Attendance register"}
+            {data?.module?.module_name || "Attendance register"}
           </p>
-
         </div>
 
         <button
@@ -80,243 +74,129 @@ function LecturerAttendance() {
         >
           ← Back to Modules
         </button>
-
       </header>
 
-
-      {/* MAIN */}
       <main className="lecturer-page-content">
-
-        {/* LOADING */}
         {loading && (
           <div className="status-card">
-
-            <div className="loading-icon">
-              ⟳
-            </div>
-
-            <h2>
-              Loading Attendance
-            </h2>
-
-            <p>
-              Please wait while the attendance register is loaded.
-            </p>
-
+            <div className="loading-icon">⟳</div>
+            <h2>Loading Attendance</h2>
+            <p>Please wait while the attendance register is loaded.</p>
           </div>
         )}
 
-
-        {/* ERROR */}
         {error && (
           <div className="error-card">
-
-            <div className="error-icon">
-              !
-            </div>
-
+            <div className="error-icon">!</div>
             <div>
-              <h3>
-                Unable to Load Attendance
-              </h3>
-
-              <p>
-                {error}
-              </p>
+              <h3>Unable to Load Attendance</h3>
+              <p>{error}</p>
             </div>
-
           </div>
         )}
 
-
-        {/* CONTENT */}
         {!loading && !error && data && (
           <>
-
-            {/* ATTENDANCE SUMMARY */}
             <section className="attendance-hero-card">
-
-              <div className="attendance-hero-icon">
-                ✓
-              </div>
+              <div className="attendance-hero-icon">✓</div>
 
               <div className="attendance-hero-text">
-
-                <span>
-                  ATTENDANCE REGISTER
-                </span>
-
-                <h2>
-                  {data.module.module_code}
-                </h2>
-
-                <p>
-                  {data.module.module_name}
-                </p>
-
+                <span>ATTENDANCE REGISTER</span>
+                <h2>{data.module.module_code}</h2>
+                <p>{data.module.module_name}</p>
               </div>
 
               <div className="attendance-total">
-
-                <strong>
-                  {data.total_records}
-                </strong>
-
-                <span>
-                  Attendance Records
-                </span>
-
+                <strong>{data.total_records}</strong>
+                <span>Attendance Records</span>
               </div>
-
             </section>
 
-
-            {/* QUICK ACTIONS */}
             <section className="attendance-actions-card">
-
-              <div>
-
-                <span>
-                  MODULE MANAGEMENT
-                </span>
-
-                <h2>
-                  Manage Attendance
-                </h2>
-
+              <div className="attendance-actions-description">
+                <span>MODULE MANAGEMENT</span>
+                <h2>Manage Attendance</h2>
                 <p>
                   View students, monitor overall attendance,
                   or generate the next attendance prediction.
                 </p>
-
               </div>
 
               <div className="quick-actions-buttons">
-
                 <button
+                  className="view-students-action"
                   onClick={() =>
-                    navigate(
-                      `/lecturer/students/${moduleId}`
-                    )
+                    navigate(`/lecturer/students/${moduleId}`)
                   }
                 >
-                  View Students
+                  View Students <span>→</span>
                 </button>
 
                 <button
+                  className="overall-attendance-action"
                   onClick={() =>
                     navigate(
                       `/lecturer/attendance/${moduleId}/overall`
                     )
                   }
                 >
-                  Overall Attendance
+                  Overall Attendance <span>→</span>
                 </button>
 
                 <button
+                  className="predict-attendance-action"
                   onClick={() =>
                     navigate(
                       `/lecturer/attendance/${moduleId}/prediction`
                     )
                   }
                 >
-                  Predict Attendance
+                  Predict Attendance <span>→</span>
                 </button>
-
               </div>
-
             </section>
 
-
-            {/* ATTENDANCE TABLE */}
             <section className="attendance-section">
-
               <div className="section-heading">
-
                 <div>
-
-                  <span>
-                    STUDENT ATTENDANCE
-                  </span>
-
-                  <h2>
-                    Attendance Register
-                  </h2>
-
+                  <span>STUDENT ATTENDANCE</span>
+                  <h2>Attendance Register</h2>
                   <p>
                     Attendance records for students registered
                     in this module.
                   </p>
-
                 </div>
 
                 <div className="attendance-count-badge">
                   {data.total_records} Records
                 </div>
-
               </div>
 
-
               {data.attendance.length === 0 ? (
-
                 <div className="empty-attendance">
-
-                  <div className="empty-icon">
-                    📋
-                  </div>
-
-                  <h3>
-                    No Attendance Records
-                  </h3>
-
+                  <div className="empty-icon">📋</div>
+                  <h3>No Attendance Records</h3>
                   <p>
                     No students have attended this module yet.
                   </p>
-
                 </div>
-
               ) : (
-
                 <div className="attendance-table-wrapper">
-
                   <table className="attendance-table">
-
                     <thead>
-
                       <tr>
-                        <th>
-                          Student Number
-                        </th>
-
-                        <th>
-                          Student
-                        </th>
-
-                        <th>
-                          Date
-                        </th>
-
-                        <th>
-                          Time In
-                        </th>
-
-                        <th>
-                          Time Out
-                        </th>
-
-                        <th>
-                          Status
-                        </th>
+                        <th>Student Number</th>
+                        <th>Student</th>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Status</th>
                       </tr>
-
                     </thead>
 
                     <tbody>
-
                       {data.attendance.map((record) => (
-
                         <tr key={record.attendance_id}>
-
                           <td>
                             <span className="student-number">
                               {record.student_number}
@@ -324,21 +204,14 @@ function LecturerAttendance() {
                           </td>
 
                           <td>
-
                             <div className="student-name-cell">
-
                               <div className="student-avatar">
                                 {record.student_name
                                   ?.charAt(0)
                                   .toUpperCase()}
                               </div>
-
-                              <strong>
-                                {record.student_name}
-                              </strong>
-
+                              <strong>{record.student_name}</strong>
                             </div>
-
                           </td>
 
                           <td>
@@ -347,55 +220,29 @@ function LecturerAttendance() {
                             </span>
                           </td>
 
-                          <td>
-                            {record.time_in || "-"}
-                          </td>
+                          <td>{record.time_in || "-"}</td>
+                          <td>{record.time_out || "-"}</td>
 
                           <td>
-                            {record.time_out || "-"}
-                          </td>
-
-                          <td>
-
                             <span className="status-present">
                               ✓ {record.status || "Present"}
                             </span>
-
                           </td>
-
                         </tr>
-
                       ))}
-
                     </tbody>
-
                   </table>
-
                 </div>
-
               )}
-
             </section>
-
           </>
         )}
-
       </main>
 
-
-      {/* FOOTER */}
       <footer className="lecturer-page-footer">
-
-        <strong>
-          LabGuard
-        </strong>
-
-        <span>
-          Laboratory Management System
-        </span>
-
+        <strong>LabGuard</strong>
+        <span>Laboratory Management System</span>
       </footer>
-
     </div>
   );
 }

@@ -12,8 +12,6 @@ function RegisterStudent() {
     course: "",
     current_year: "",
     email: "",
-    password: "",
-    confirm_password: "",
   });
 
   const [message, setMessage] = useState("");
@@ -33,15 +31,10 @@ function RegisterStudent() {
     setMessage("");
     setError("");
 
-    if (formData.password !== formData.confirm_password) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      setError("You are not logged in. Please login again.");
+      setError("You are not logged in. Please log in again.");
       return;
     }
 
@@ -51,14 +44,12 @@ function RegisterStudent() {
       const response = await axios.post(
         "https://labguard-dklp.onrender.com/admin/students/register",
         {
-          student_number: formData.student_number,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          course: formData.course,
+          student_number: formData.student_number.trim(),
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          course: formData.course.trim(),
           current_year: Number(formData.current_year),
-          email: formData.email,
-          password: formData.password,
-          confirm_password: formData.confirm_password,
+          email: formData.email.trim(),
         },
         {
           headers: {
@@ -67,7 +58,9 @@ function RegisterStudent() {
         }
       );
 
-      setMessage(response.data.message);
+      setMessage(
+        response.data.message || "Student registered successfully."
+      );
 
       setFormData({
         student_number: "",
@@ -76,21 +69,20 @@ function RegisterStudent() {
         course: "",
         current_year: "",
         email: "",
-        password: "",
-        confirm_password: "",
       });
     } catch (err) {
-      console.error(err);
+      console.error("Student registration error:", err);
 
       if (err.response) {
+        const detail = err.response.data?.detail;
+
         setError(
-          err.response.data.detail ||
-          "Student registration failed."
+          typeof detail === "string"
+            ? detail
+            : "Student registration failed. Please check the details and try again."
         );
       } else {
-        setError(
-          "Could not connect to the LabGuard backend."
-        );
+        setError("Could not connect to the LabGuard backend.");
       }
     } finally {
       setLoading(false);
@@ -100,30 +92,30 @@ function RegisterStudent() {
   return (
     <div className="registration-page">
       <div className="registration-card">
-
         <h1>Register Student</h1>
 
         <p className="registration-description">
-          Register a student for LabGuard.
+          Register a student for LabGuard. The student can set their
+          password through the designated account setup process.
         </p>
 
         {message && (
-          <div className="success-message">
+          <div className="success-message" role="status">
             {message}
           </div>
         )}
 
         {error && (
-          <div className="error-message">
+          <div className="error-message" role="alert">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-
           <div className="form-group">
-            <label>Student Number</label>
+            <label htmlFor="student_number">Student Number</label>
             <input
+              id="student_number"
               type="text"
               name="student_number"
               value={formData.student_number}
@@ -134,8 +126,9 @@ function RegisterStudent() {
           </div>
 
           <div className="form-group">
-            <label>First Name</label>
+            <label htmlFor="first_name">First Name</label>
             <input
+              id="first_name"
               type="text"
               name="first_name"
               value={formData.first_name}
@@ -146,8 +139,9 @@ function RegisterStudent() {
           </div>
 
           <div className="form-group">
-            <label>Last Name</label>
+            <label htmlFor="last_name">Last Name</label>
             <input
+              id="last_name"
               type="text"
               name="last_name"
               value={formData.last_name}
@@ -158,8 +152,9 @@ function RegisterStudent() {
           </div>
 
           <div className="form-group">
-            <label>Course</label>
+            <label htmlFor="course">Course</label>
             <input
+              id="course"
               type="text"
               name="course"
               value={formData.course}
@@ -170,8 +165,9 @@ function RegisterStudent() {
           </div>
 
           <div className="form-group">
-            <label>Current Year</label>
+            <label htmlFor="current_year">Current Year</label>
             <input
+              id="current_year"
               type="number"
               name="current_year"
               value={formData.current_year}
@@ -183,39 +179,14 @@ function RegisterStudent() {
           </div>
 
           <div className="form-group">
-            <label>Email Address</label>
+            <label htmlFor="email">Email Address</label>
             <input
+              id="email"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter email address"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter password"
-              minLength="8"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Confirm Password</label>
-            <input
-              type="password"
-              name="confirm_password"
-              value={formData.confirm_password}
-              onChange={handleChange}
-              placeholder="Confirm password"
-              minLength="8"
               required
             />
           </div>
@@ -227,16 +198,15 @@ function RegisterStudent() {
           >
             {loading ? "Registering..." : "Register Student"}
           </button>
-
         </form>
 
         <button
+          type="button"
           className="back-dashboard-button"
           onClick={() => navigate("/admin")}
         >
           Back to Dashboard
         </button>
-
       </div>
     </div>
   );

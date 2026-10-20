@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import "./LecturerPrediction.css";
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
@@ -41,7 +43,7 @@ function LecturerPrediction() {
 
         setError(
           err.response?.data?.detail ||
-          "Failed to generate attendance prediction."
+            "Failed to generate attendance prediction."
         );
       } finally {
         setLoading(false);
@@ -52,13 +54,14 @@ function LecturerPrediction() {
   }, [moduleId, navigate]);
 
   return (
-    <div className="dashboard">
-
-      <header>
+    <div className="dashboard prediction-page">
+      <header className="prediction-header">
         <div>
-          <h1>
-            Attendance Prediction
-          </h1>
+          <span className="prediction-header-label">
+            LECTURER PORTAL
+          </span>
+
+          <h1>Attendance Prediction</h1>
 
           <p>
             {data?.module?.module_code || "Module"}{" "}
@@ -66,104 +69,149 @@ function LecturerPrediction() {
           </p>
         </div>
 
-        <button onClick={() => navigate("/lecturer/modules")}>
+        <button
+          className="prediction-back-button"
+          onClick={() => navigate("/lecturer/modules")}
+        >
           Back to Modules
         </button>
       </header>
 
-      <main>
-
+      <main className="prediction-content">
         {loading && (
-          <p>
-            Generating prediction...
-          </p>
+          <div className="prediction-loading">
+            <div className="prediction-loading-icon">⟳</div>
+            <h2>Generating Prediction</h2>
+            <p>Loading attendance data for this module.</p>
+          </div>
         )}
 
         {error && (
-          <p className="error">
-            {error}
-          </p>
+          <div className="prediction-error">
+            <strong>Unable to Generate Prediction</strong>
+            <p>{error}</p>
+          </div>
         )}
 
         {!loading && !error && data && (
           <>
-
             {data.prediction === null ? (
-              <div className="card">
+              <div className="prediction-empty">
+                <div className="prediction-empty-icon">!</div>
+
                 <h2>No Prediction Available</h2>
 
-                <p>
-                  {data.message}
-                </p>
+                <p>{data.message}</p>
               </div>
             ) : (
               <>
+                <section className="prediction-result">
+                  <span className="prediction-result-label">
+                    ATTENDANCE FORECAST
+                  </span>
 
-                <div className="card">
-                  <h3>
-                    Predicted Next Attendance Rate
-                  </h3>
+                  <h2>Predicted Next Attendance Rate</h2>
 
-                  <h1>
-                    {data.predicted_next_attendance_rate}%
-                  </h1>
+                  <div className="prediction-rate">
+                    <strong>
+                      {data.predicted_next_attendance_rate}
+                    </strong>
+                    <span>%</span>
+                  </div>
 
-                  <p>
+                  <p className="prediction-result-description">
                     Based on the most recent{" "}
                     {data.classes_used} recorded classes.
                   </p>
-                </div>
+                </section>
 
-                <div className="card">
+                <section className="prediction-history-card">
+                  <div className="prediction-history-heading">
+                    <div>
+                      <span className="prediction-section-label">
+                        HISTORICAL DATA
+                      </span>
 
-                  <h2>
-                    Recent Attendance Rates
-                  </h2>
+                      <h2>Recent Attendance Rates</h2>
 
-                  <table>
+                      <p>
+                        Attendance recorded in the most recent
+                        classes.
+                      </p>
+                    </div>
 
-                    <thead>
-                      <tr>
-                        <th>Class</th>
-                        <th>Attendance Rate</th>
-                      </tr>
-                    </thead>
+                    <span className="prediction-history-badge">
+                      {data.classes_used} Classes
+                    </span>
+                  </div>
 
-                    <tbody>
+                  <div className="prediction-table-wrapper">
+                    <table className="prediction-table">
+                      <thead>
+                        <tr>
+                          <th>Class</th>
+                          <th>Attendance Rate</th>
+                        </tr>
+                      </thead>
 
-                      {data.recent_attendance_rates.map(
-                        (rate, index) => (
-                          <tr key={index}>
-                            <td>
-                              Class {index + 1}
-                            </td>
+                      <tbody>
+                        {data.recent_attendance_rates.map(
+                          (rate, index) => (
+                            <tr key={index}>
+                              <td>
+                                <span className="prediction-class-number">
+                                  Class {index + 1}
+                                </span>
+                              </td>
 
-                            <td>
-                              {rate}%
-                            </td>
-                          </tr>
-                        )
-                      )}
+                              <td>
+                                <div className="prediction-history-rate">
+                                  <div className="prediction-history-bar">
+                                    <div
+                                      className="prediction-history-fill"
+                                      style={{
+                                        width: `${Math.min(
+                                          100,
+                                          Math.max(
+                                            0,
+                                            Number(rate) || 0
+                                          )
+                                        )}%`,
+                                      }}
+                                    />
+                                  </div>
 
-                    </tbody>
+                                  <strong>{rate}%</strong>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-                  </table>
+                  <div className="prediction-method">
+                    <div className="prediction-method-icon">
+                      i
+                    </div>
 
-                  <p>
-                    Prediction method:{" "}
-                    {data.prediction_method}
-                  </p>
-
-                </div>
-
+                    <div>
+                      <strong>Prediction Method</strong>
+                      <p>{data.prediction_method}</p>
+                    </div>
+                  </div>
+                </section>
               </>
             )}
-
           </>
         )}
-
       </main>
 
+      <footer className="prediction-footer">
+        <strong>LabGuard</strong>
+        <span>Laboratory Access & Attendance Management</span>
+      </footer>
     </div>
   );
 }
