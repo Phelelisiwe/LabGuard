@@ -131,3 +131,35 @@ LabGuard System
         "LabGuard Password Reset",
         text_content
     )
+    
+def send_account_credentials_email(
+    receiver_email: str,
+    temporary_password: str,
+    reset_link: str,
+):
+    text_content = f"""Hello,
+
+Your LabGuard account has been created by the Super Admin.
+
+Your temporary login password is:
+
+{temporary_password}
+
+Please keep this password private. You can use the link below to choose
+a new password:
+
+{reset_link}
+
+The password-change link expires after 30 minutes and can only be used once.
+
+If you did not expect this account, please contact your LabGuard administrator.
+
+Regards,
+LabGuard System
+"""
+
+    _send_email(
+        receiver_email,
+        "Your LabGuard Account Details",
+        text_content,
+    )

@@ -1,3 +1,6 @@
+
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,6 +16,12 @@ from app.schemas.employee import EmployeeCreate
 
 from app.security import hash_password
 from app.dependencies import require_role
+
+from app.email_service import send_account_credentials_email
+from app.routers.change_password import (
+    create_password_reset_link,
+    password_reset_tokens,
+)
 
 
 router = APIRouter(
@@ -32,12 +41,6 @@ def register_student(
     db: Session = Depends(get_db)
 ):
 
-    if student.password != student.confirm_password:
-        raise HTTPException(
-            status_code=400,
-            detail="Passwords do not match"
-        )
-
     existing_student_number = db.query(Student).filter(
         Student.student_number == student.student_number
     ).first()
@@ -48,8 +51,10 @@ def register_student(
             detail="Student number already exists"
         )
 
+    email = str(student.email).strip().lower()
+
     existing_email = db.query(Student).filter(
-        Student.email == student.email
+        Student.email == email
     ).first()
 
     if existing_email:
@@ -58,24 +63,56 @@ def register_student(
             detail="Student email already exists"
         )
 
+    temporary_password = secrets.token_urlsafe(12)
+    reset_token = None
+
     new_student = Student(
         student_number=student.student_number,
         first_name=student.first_name,
         last_name=student.last_name,
         course=student.course,
         current_year=student.current_year,
-        email=student.email,
-        password_hash=hash_password(student.password),
+        email=email,
+        password_hash=hash_password(temporary_password),
         email_verified=False
     )
 
-    db.add(new_student)
-    db.commit()
-    db.refresh(new_student)
+    try:
+        db.add(new_student)
+        db.flush()
+
+        reset_token, reset_link = create_password_reset_link(
+            user_id=new_student.id,
+            user_type="student",
+            email=email
+        )
+
+        send_account_credentials_email(
+            receiver_email=email,
+            temporary_password=temporary_password,
+            reset_link=reset_link
+        )
+
+        db.commit()
+        db.refresh(new_student)
+
+    except Exception:
+        db.rollback()
+
+        if reset_token:
+            password_reset_tokens.pop(reset_token, None)
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Student registration failed. "
+                "Check the database and Brevo email configuration."
+            )
+        )
 
     return {
         "success": True,
-        "message": "Student registered successfully",
+        "message": "Student registered. Account details emailed successfully.",
         "student_number": new_student.student_number,
         "email": new_student.email
     }
@@ -92,12 +129,6 @@ def register_employee(
     db: Session = Depends(get_db)
 ):
 
-    if employee.password != employee.confirm_password:
-        raise HTTPException(
-            status_code=400,
-            detail="Passwords do not match"
-        )
-
     existing_employee_number = db.query(Employee).filter(
         Employee.employee_number == employee.employee_number
     ).first()
@@ -108,8 +139,10 @@ def register_employee(
             detail="Employee number already exists"
         )
 
+    email = str(employee.email).strip().lower()
+
     existing_email = db.query(Employee).filter(
-        Employee.email == employee.email
+        Employee.email == email
     ).first()
 
     if existing_email:
@@ -118,23 +151,55 @@ def register_employee(
             detail="Employee email already exists"
         )
 
+    temporary_password = secrets.token_urlsafe(12)
+    reset_token = None
+
     new_employee = Employee(
         employee_number=employee.employee_number,
         first_name=employee.first_name,
         last_name=employee.last_name,
-        email=employee.email,
+        email=email,
         role=employee.role.value,
-        password_hash=hash_password(employee.password),
+        password_hash=hash_password(temporary_password),
         email_verified=False
     )
 
-    db.add(new_employee)
-    db.commit()
-    db.refresh(new_employee)
+    try:
+        db.add(new_employee)
+        db.flush()
+
+        reset_token, reset_link = create_password_reset_link(
+            user_id=new_employee.id,
+            user_type="employee",
+            email=email
+        )
+
+        send_account_credentials_email(
+            receiver_email=email,
+            temporary_password=temporary_password,
+            reset_link=reset_link
+        )
+
+        db.commit()
+        db.refresh(new_employee)
+
+    except Exception:
+        db.rollback()
+
+        if reset_token:
+            password_reset_tokens.pop(reset_token, None)
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Employee registration failed. "
+                "Check the database and Brevo email configuration."
+            )
+        )
 
     return {
         "success": True,
-        "message": "Employee registered successfully",
+        "message": "Employee registered. Account details emailed successfully.",
         "employee_number": new_employee.employee_number,
         "email": new_employee.email,
         "role": new_employee.role
@@ -260,10 +325,6 @@ def get_all_employees(
 # GET ALL MODULES
 # =========================================================
 
-# =========================================================
-# GET ALL MODULES
-# =========================================================
-
 @router.get("/modules")
 def get_all_modules(
     current_user=Depends(require_role("super_admin")),
@@ -291,6 +352,7 @@ def get_all_modules(
         for module in modules
     ]
 
+
 # =========================================================
 # ASSIGN LECTURER TO MODULE
 # =========================================================
@@ -303,7 +365,6 @@ def assign_lecturer_to_module(
     db: Session = Depends(get_db)
 ):
 
-    # Find the module
     module = db.query(Module).filter(
         Module.id == module_id
     ).first()
@@ -314,7 +375,6 @@ def assign_lecturer_to_module(
             detail="Module not found"
         )
 
-    # Find the employee
     lecturer = db.query(Employee).filter(
         Employee.id == lecturer_id
     ).first()
@@ -325,14 +385,12 @@ def assign_lecturer_to_module(
             detail="Employee not found"
         )
 
-    # Make sure the employee is a lecturer
     if lecturer.role != "Lecturer":
         raise HTTPException(
             status_code=400,
             detail="Selected employee is not a Lecturer"
         )
 
-    # Assign lecturer
     module.lecturer_id = lecturer.id
 
     db.commit()
@@ -347,6 +405,7 @@ def assign_lecturer_to_module(
         "lecturer_id": lecturer.id,
         "lecturer_name": f"{lecturer.first_name} {lecturer.last_name}"
     }
+
 
 # =========================================================
 # GET ALL STUDENT-MODULE ASSIGNMENTS

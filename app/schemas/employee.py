@@ -1,3 +1,4 @@
+
 from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field
@@ -17,5 +18,3 @@ class EmployeeCreate(BaseModel):
     last_name: str = Field(min_length=1)
     email: EmailStr
     role: EmployeeRole
-    password: str = Field(min_length=8)
-    confirm_password: str = Field(min_length=8)
