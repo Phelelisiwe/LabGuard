@@ -52,7 +52,7 @@ function LecturerStudents() {
   }, [moduleId, navigate]);
 
   return (
-    <div className="dashboard lecturer-page">
+    <div className="dashboard lecturer-page lecturer-students-page">
 
       {/* HEADER */}
       <header className="lecturer-page-header">
