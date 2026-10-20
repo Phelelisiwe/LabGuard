@@ -5,10 +5,10 @@ const navigation = [
   { label: "Dashboard", short: "DB", path: "/admin/dashboard" },
   { label: "Register Student", short: "ST", path: "/admin/register-student" },
   { label: "Register Employee", short: "EM", path: "/admin/register-employee" },
+  { label: "Biometric Registration", short: "BR", path: "/admin/biometric" },
   { label: "Assign Lecturer", short: "AL", path: "/admin/assign-lecturer" },
   { label: "Delete User", short: "DU", path: "/admin/delete-user", danger: true },
 ];
-
 function AdminDashboard() {
   const navigate = useNavigate();
 
