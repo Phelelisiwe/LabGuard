@@ -991,18 +991,18 @@
 
 @media (max-width: 700px) {
   .lecturer-dashboard {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .lecturer-sidebar {
-    position: relative;
-    top: auto;
+    position: sticky;
+    top: 0;
     align-self: stretch;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    padding: 16px;
-    overflow: visible;
+    width: 220px;
+    height: 100vh;
+    min-height: 100vh;
+    padding: 16px 10px;
+    overflow-y: auto;
   }
 
   .lecturer-logo {
@@ -1018,8 +1018,8 @@
   }
 
   .lecturer-sidebar-nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 7px;
     margin-top: 15px;
   }
