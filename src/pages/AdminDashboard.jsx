@@ -1,156 +1,247 @@
-﻿import { useNavigate } from "react-router-dom";
+﻿
+import { useNavigate } from "react-router-dom";
 import "./AdminDashboard.css";
 
-const navigation = [
-  { label: "Dashboard", short: "DB", path: "/admin/dashboard" },
-  { label: "Register Student", short: "ST", path: "/admin/register-student" },
-  { label: "Register Employee", short: "EM", path: "/admin/register-employee" },
-  { label: "Biometric Registration", short: "BR", path: "/admin/biometric" },
-  { label: "Assign Lecturer", short: "AL", path: "/admin/assign-lecturer" },
-  { label: "Delete User", short: "DU", path: "/admin/delete-user", danger: true },
+const functions = [
+  {
+    short: "ST",
+    title: "Student Management",
+    description:
+      "Register students and maintain their details for laboratory access and attendance.",
+    action: "Register student",
+    path: "/admin/register-student",
+  },
+  {
+    short: "EM",
+    title: "Employee Management",
+    description:
+      "Register lecturers, assistant lecturers, cleaners and IT specialists.",
+    action: "Register employee",
+    path: "/admin/register-employee",
+  },
+  {
+    short: "BIO",
+    title: "Biometric Registration",
+    description:
+      "Manage face and fingerprint registration for eligible laboratory users.",
+    action: "Manage biometrics",
+    path: "/admin/biometric",
+  },
+  {
+    short: "AL",
+    title: "Lecturer Assignment",
+    description:
+      "Assign lecturers to modules for class management and attendance.",
+    action: "Assign lecturer",
+    path: "/admin/assign-lecturer",
+  },
+  {
+    short: "MOD",
+    title: "Module Administration",
+    description:
+      "Create modules and assign students to their registered modules.",
+    action: "Create module",
+    path: "/admin/create-module",
+  },
+  {
+    short: "MS",
+    title: "Manage Students",
+    description:
+      "View and manage existing student accounts.",
+    action: "Manage students",
+    path: "/admin/students",
+  },
+  {
+    short: "ME",
+    title: "Manage Employees",
+    description:
+      "View and manage existing employee accounts.",
+    action: "Manage employees",
+    path: "/admin/employees",
+  },
+  {
+    short: "DU",
+    title: "Delete User",
+    description:
+      "Open the account deletion page for authorised user removals.",
+    action: "Manage users",
+    path: "/admin/delete-user",
+    danger: true,
+  },
 ];
+
 function AdminDashboard() {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    navigate("/login");
-  };
+  const attendanceTrend = [68, 77, 70, 84, 92, 88, 96];
+  const operations = [
+    { name: "Students", value: 86, color: "blue" },
+    { name: "Biometric checks", value: 74, color: "gold" },
+    { name: "Module activity", value: 91, color: "green" },
+    { name: "Access alerts", value: 62, color: "red" },
+  ];
+  const statCards = [
+    { label: "Students", value: "1,248", note: "+8% this term" },
+    { label: "Attendance", value: "89%", note: "healthy rate" },
+    { label: "Alerts", value: "14", note: "requires review" },
+  ];
 
   return (
-    <div className="lg-dashboard">
-      {/* Top navigation bar */}
-      <header className="lg-navbar">
-        <div className="lg-brand">
-          <div className="lg-logo-mark" aria-hidden="true">
+    <div className="lg-main">
+      <section className="lg-page-top">
+        <div>
+          <span className="lg-eyebrow">ADMINISTRATION</span>
+          <h1>Dashboard</h1>
+          <p>
+            Manage laboratory users, access control and academic
+            activities from one central workspace.
+          </p>
+        </div>
+
+        <div className="lg-status">
+          <span className="lg-status-dot" />
+          <span>Admin portal</span>
+        </div>
+      </section>
+
+      <section className="lg-overview">
+        <div className="lg-overview-heading">
+          <div>
+            <span className="lg-eyebrow">YOUR WORKSPACE</span>
+            <h2>System Overview</h2>
+            <p>Select a feature to manage the LabGuard system.</p>
+          </div>
+        </div>
+
+        <div className="lg-dashboard-welcome">
+          <div className="lg-welcome-mark" aria-hidden="true">
             LG
           </div>
 
-          <div className="lg-brand-text">
-            <span className="lg-brand-name">LabGuard</span>
-            <span className="lg-brand-subtitle">
-              LABORATORY MANAGEMENT SYSTEM
-            </span>
+          <div className="lg-welcome-text">
+            <h2>Welcome to LabGuard Administration</h2>
+            <p>
+              LabGuard helps manage laboratory users, biometric
+              registration, module assignments and secure attendance.
+              Use the shortcuts below to access available features.
+            </p>
           </div>
         </div>
 
-        <div className="lg-nav-right">
-          <span className="lg-admin-label">Super Admin</span>
-
-          <button className="lg-logout" onClick={handleLogout}>
-            Log out
-          </button>
-        </div>
-      </header>
-
-      <div className="lg-layout">
-        {/* Sidebar */}
-        <aside className="lg-sidebar">
-          <div className="lg-sidebar-heading">WORKSPACE</div>
-
-          <nav className="lg-sidebar-nav" aria-label="Admin navigation">
-            {navigation.map((item) => (
-              <button
-                key={item.path}
-                type="button"
-                className={`lg-sidebar-link ${
-                  item.label === "Dashboard" ? "lg-sidebar-active" : ""
-                } ${item.danger ? "lg-sidebar-danger" : ""}`}
-                aria-current={
-                  item.label === "Dashboard" ? "page" : undefined
-                }
-                onClick={() => navigate(item.path)}
-              >
-                <span className="lg-sidebar-icon">{item.short}</span>
-                <span className="lg-sidebar-label">{item.label}</span>
-                {item.label !== "Dashboard" && (
-                  <span className="lg-sidebar-arrow" aria-hidden="true">
-                    &gt;
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          <div className="lg-sidebar-bottom">
-            <div className="lg-sidebar-bottom-line" />
-            <span className="lg-sidebar-small-title">LABGUARD</span>
-            <span className="lg-sidebar-small-text">
-              Secure access. Smarter laboratories.
-            </span>
-          </div>
-        </aside>
-
-        {/* Main dashboard content */}
-        <main className="lg-main">
-          <section className="lg-page-top">
-            <div>
-              <span className="lg-eyebrow">ADMINISTRATION</span>
-              <h1>Dashboard</h1>
-              <p>
-                Welcome to LabGuard. Manage laboratory users and access
-                from one central workspace.
-              </p>
-            </div>
-
-            <div className="lg-status">
-              <span className="lg-status-dot" />
-              <span>Admin portal</span>
-            </div>
-          </section>
-
-          <section className="lg-overview">
-            <div className="lg-overview-heading">
+        <div className="lg-analytics-row">
+          <div className="lg-analytics-card">
+            <div className="lg-analytics-header">
               <div>
-                <span className="lg-eyebrow">YOUR WORKSPACE</span>
-                <h2>System Overview</h2>
-                <p>
-                  Your central workspace for laboratory administration.
-                </p>
+                <span>ATTENDANCE</span>
+                <h3>Weekly overview</h3>
               </div>
+              <strong>89%</strong>
             </div>
 
-            <div className="lg-overview-panel">
-              <div className="lg-overview-accent" />
-
-              <div className="lg-overview-content">
-                <div className="lg-overview-symbol" aria-hidden="true">
-                  LG
+            <div className="lg-mini-chart" aria-label="Weekly attendance chart">
+              {attendanceTrend.map((value, index) => (
+                <div key={index} className="lg-mini-bar-group">
+                  <div className="lg-mini-bar-track">
+                    <div className="lg-mini-bar-fill" style={{ height: `${value}%` }} />
+                  </div>
+                  <span>{["M", "T", "W", "T", "F", "S", "S"][index]}</span>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <h3>Manage LabGuard from one place</h3>
-
-                <p>
-                  Use the navigation menu to register students and
-                  employees, assign lecturers to modules, and manage
-                  user accounts.
-                </p>
-
-                <p className="lg-overview-hint">
-                  Select an option from the sidebar to get started.
-                </p>
+          <div className="lg-analytics-card">
+            <div className="lg-analytics-header">
+              <div>
+                <span>OPERATIONS</span>
+                <h3>System health</h3>
               </div>
             </div>
 
-            <div className="lg-notice">
-              <span className="lg-notice-mark" aria-hidden="true">
-                i
-              </span>
-
-              <p>
-                Remember to verify user details before making account
-                changes. User deletion should only be performed when
-                authorised.
-              </p>
+            <div className="lg-progress-list">
+              {operations.map((item) => (
+                <div key={item.name} className="lg-progress-item">
+                  <div className="lg-progress-label">
+                    <span>{item.name}</span>
+                    <strong>{item.value}%</strong>
+                  </div>
+                  <div className="lg-progress-track">
+                    <div className={`lg-progress-fill ${item.color}`} style={{ width: `${item.value}%` }} />
+                  </div>
+                </div>
+              ))}
             </div>
-          </section>
+          </div>
+        </div>
 
-          <footer className="lg-footer">
-            <span>LabGuard</span>
-            <span>Secure laboratory access and management</span>
-          </footer>
-        </main>
-      </div>
+        <div className="lg-stat-grid">
+          {statCards.map((card) => (
+            <div key={card.label} className="lg-stat-card">
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.note}</small>
+            </div>
+          ))}
+        </div>
+
+        <div className="lg-function-grid">
+          {functions.map((item) => (
+            <button
+              key={item.path}
+              type="button"
+              className={`lg-function-card ${
+                item.danger ? "lg-function-card-danger" : ""
+              }`}
+              onClick={() => navigate(item.path)}
+            >
+              <span className="lg-function-icon">{item.short}</span>
+              <h3>{item.title}</h3>
+              <p>{item.description}</p>
+              <span className="lg-function-link">
+                {item.action} <span aria-hidden="true">→</span>
+              </span>
+            </button>
+          ))}
+
+          <div className="lg-function-card lg-function-card-info">
+            <span className="lg-function-icon">ATT</span>
+            <h3>Attendance Management</h3>
+            <p>
+              Support biometric attendance verification and student
+              attendance tracking for registered modules.
+            </p>
+            <span className="lg-function-note">
+              Uses the attendance workflow configured in LabGuard.
+            </span>
+          </div>
+
+          <div className="lg-function-card lg-function-card-info">
+            <span className="lg-function-icon">SEC</span>
+            <h3>Access Control</h3>
+            <p>
+              Support secure laboratory access through registered
+              users and enabled biometric verification.
+            </p>
+            <span className="lg-function-note">
+              Access depends on registration and verification.
+            </span>
+          </div>
+        </div>
+
+        <div className="lg-notice">
+          <span className="lg-notice-mark" aria-hidden="true">i</span>
+          <p>
+            <strong>Security reminder:</strong> Verify user details
+            before making account changes. Only authorised administrators
+            should manage biometric registrations or delete accounts.
+          </p>
+        </div>
+      </section>
+
+      <footer className="lg-footer">
+        <span>LabGuard</span>
+        <span>Secure laboratory access and management</span>
+      </footer>
     </div>
   );
 }

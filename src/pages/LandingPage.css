@@ -99,24 +99,6 @@
   text-align: left;
 }
 
-.lg-tut-mark {
-  width: 42px;
-  height: 42px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: var(--lg-gold);
-
-  color: var(--lg-blue);
-
-  border-radius: 4px;
-
-  font-size: 13px;
-  font-weight: 900;
-}
-
 .lg-brand-text {
   display: flex;
   flex-direction: column;
@@ -126,14 +108,15 @@
 
 .lg-brand-text strong {
   font-size: 18px;
+  line-height: 1.15;
 }
 
 .lg-brand-text small {
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.72);
 
-  font-size: 8px;
+  font-size: 10px;
 
-  letter-spacing: 1px;
+  letter-spacing: 0.9px;
 
   text-transform: uppercase;
 }

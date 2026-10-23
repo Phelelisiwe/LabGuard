@@ -234,11 +234,9 @@ function LandingPage() {
             className="lg-brand"
             onClick={() => scrollToSection("overview")}
           >
-            <span className="lg-tut-mark">TUT</span>
-
             <span className="lg-brand-text">
               <strong>LabGuard</strong>
-              <small>Computer Systems Engineering</small>
+              <small>Laboratory Access System</small>
             </span>
           </button>
 
@@ -319,7 +317,7 @@ function LandingPage() {
 
 
           <div className="lg-hero-tag">
-            TSHWANE UNIVERSITY OF TECHNOLOGY
+            LABORATORY ACCESS SYSTEM
           </div>
 
 
@@ -776,20 +774,10 @@ function LandingPage() {
 
 
         <div className="lg-footer-brand">
-
-
-          <span className="lg-footer-mark">TUT</span>
-
-
           <div>
             <strong>LabGuard</strong>
-
-            <small>
-              Computer Systems Engineering
-            </small>
+            <small>Smart laboratory access &amp; attendance</small>
           </div>
-
-
         </div>
 
 

@@ -36,38 +36,26 @@ function StudentAttendance() {
   };
 
   return (
-    <div className="student-attendance-page">
-
-      {/* Header */}
-      <header className="student-attendance-header">
-
-        <div className="student-attendance-brand">
-
-          <div className="tut-logo">
-            TUT
-          </div>
-
-          <div className="brand-line"></div>
-
-          <div>
-            <h1>LabGuard</h1>
-            <span>Laboratory Management System</span>
-          </div>
-
-        </div>
-
-        <button
-          className="attendance-back-button"
+    <div className="modern-student-dashboard student-page-shell">
+      <header className="modern-student-nav">
+        <div
+          className="modern-student-brand"
           onClick={() => navigate("/student")}
         >
-          ← Back
-        </button>
+          <div className="modern-student-logo">LG</div>
+          <div className="modern-student-brand-text">
+            <strong>LabGuard</strong>
+            <span>Student Portal</span>
+          </div>
+        </div>
 
+        <button className="modern-student-logout" onClick={() => navigate("/student")}>
+          <span>←</span>
+          Dashboard
+        </button>
       </header>
 
-
-      {/* Main */}
-      <main className="student-attendance-main">
+      <main className="modern-student-content student-content-compact">
 
         <div className="student-attendance-title">
 
@@ -233,16 +221,9 @@ function StudentAttendance() {
 
 
       {/* Footer */}
-      <footer className="student-attendance-footer">
-
-        <span>
-          LabGuard • Laboratory Management System
-        </span>
-
-        <span>
-          Tshwane University of Technology
-        </span>
-
+      <footer className="modern-student-footer student-footer-compact">
+        <span>LabGuard • Laboratory Management System</span>
+        <span>Student access overview</span>
       </footer>
 
     </div>

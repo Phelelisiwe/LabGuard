@@ -1,6 +1,7 @@
 import BrandHeader from "./BrandHeader";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./App.css";
+import AdminLayout from "./pages/AdminLayout";
 
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -49,17 +50,21 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* SUPER ADMIN */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/register-student" element={<RegisterStudent />} />
-        <Route path="/admin/register-employee" element={<RegisterEmployee />} />
-        <Route path="/admin/students" element={<ManageStudents />} />
-        <Route path="/admin/employees" element={<ManageEmployees />} />
-        <Route path="/admin/delete-user" element={<DeleteUser />} />
-        <Route path="/admin/create-module" element={<CreateModule />} />
-        <Route path="/admin/assign-student" element={<AssignStudentModule />} />
-        <Route path="/admin/assign-lecturer" element={<AssignLecturer />} />
-        <Route path="/admin/biometric" element={<BiometricRegistration />} />
+        
+        {/* SUPER ADMIN - SHARED LAYOUT */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="register-student" element={<RegisterStudent />} />
+          <Route path="register-employee" element={<RegisterEmployee />} />
+          <Route path="students" element={<ManageStudents />} />
+          <Route path="employees" element={<ManageEmployees />} />
+          <Route path="delete-user" element={<DeleteUser />} />
+          <Route path="create-module" element={<CreateModule />} />
+          <Route path="assign-student" element={<AssignStudentModule />} />
+          <Route path="assign-lecturer" element={<AssignLecturer />} />
+          <Route path="biometric" element={<BiometricRegistration />} />
+        </Route>
 
         {/* STUDENT */}
         <Route path="/student" element={<StudentDashboard />} />

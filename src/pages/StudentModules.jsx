@@ -122,9 +122,27 @@ function StudentModules() {
   }
 
   return (
-    <div className="simple-modules-page">
+    <div className="modern-student-dashboard student-page-shell">
+      <header className="modern-student-nav">
+        <div
+          className="modern-student-brand"
+          onClick={() => navigate("/student")}
+        >
+          <div className="modern-student-logo">LG</div>
+          <div className="modern-student-brand-text">
+            <strong>LabGuard</strong>
+            <span>Student Portal</span>
+          </div>
+        </div>
 
-      <div className="simple-modules-container">
+        <button className="modern-student-logout" onClick={() => navigate("/student")}>
+          <span>←</span>
+          Dashboard
+        </button>
+      </header>
+
+      <main className="modern-student-content student-content-compact">
+        <div className="simple-modules-container">
 
         {/* HEADER */}
 
@@ -295,7 +313,7 @@ function StudentModules() {
         </footer>
 
       </div>
-
+      </main>
     </div>
   );
 }

@@ -48,7 +48,7 @@ function ResetPassword() {
 
     try {
       const response = await axios.post(
-        "https://labguard-dklp.onrender.com/auth/reset-password",
+        `${import.meta.env.VITE_API_URL}/auth/reset-password`,
         {
           reset_token: token,
           new_password: newPassword,

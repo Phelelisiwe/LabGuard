@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "./LecturerDashBoard.css";
+import "./LecturerDashboard.css";
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
@@ -15,6 +15,19 @@ function LecturerDashboard() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem("lecturer_notifications");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [noticeForm, setNoticeForm] = useState({
+    type: "cancelled",
+    title: "",
+    message: "",
+  });
 
   const token = localStorage.getItem("access_token");
 
@@ -123,6 +136,66 @@ console.log("NUMBER OF MODULES:", response.data?.length);
 
   const lecturerInitial = lecturerEmail.charAt(0).toUpperCase();
 
+  useEffect(() => {
+    localStorage.setItem("lecturer_notifications", JSON.stringify(notifications));
+  }, [notifications]);
+
+  const handleNoticeChange = (event) => {
+    const { name, value } = event.target;
+    setNoticeForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handleSendNotification = (event) => {
+    event.preventDefault();
+
+    if (!selectedModuleId) {
+      setError("Select a module before sending a class alert.");
+      return;
+    }
+
+    const trimmedTitle = noticeForm.title.trim();
+    const trimmedMessage = noticeForm.message.trim();
+
+    if (!trimmedTitle || !trimmedMessage) {
+      setError("Add both a title and a message before sending the alert.");
+      return;
+    }
+
+    const newNotification = {
+      id: Date.now(),
+      moduleId: selectedModuleId,
+      type: noticeForm.type,
+      title: trimmedTitle,
+      message: trimmedMessage,
+      createdAt: new Date().toISOString(),
+      moduleCode: selectedModule?.module_code || "Module",
+    };
+
+    setNotifications((previous) => [newNotification, ...previous].slice(0, 8));
+    setNoticeForm({ type: "cancelled", title: "", message: "" });
+    setError("");
+  };
+
+  const notificationSummary = notifications.length
+    ? `${notifications.length} recent alert${notifications.length === 1 ? "" : "s"}`
+    : "No alerts yet";
+
+  const weeklyAttendance = [78, 84, 72, 90, 88, 94, 92];
+  const summaryCards = [
+    { label: "Active students", value: "128", note: "+12 this week" },
+    { label: "Attendance rate", value: "89%", note: "above target" },
+    { label: "Sessions", value: "18", note: "this month" },
+  ];
+  const moduleHealth = [
+    { name: "Web Dev", value: 92, color: "blue" },
+    { name: "DB Systems", value: 88, color: "gold" },
+    { name: "Networking", value: 81, color: "green" },
+    { name: "Testing", value: 76, color: "purple" },
+  ];
+
   return (
     <div className="lecturer-dashboard">
       <aside className="lecturer-sidebar">
@@ -198,6 +271,62 @@ console.log("NUMBER OF MODULES:", response.data?.length);
             {error}
           </div>
         )}
+
+        <section className="lecturer-analytics">
+          <div className="lecturer-analytics-card">
+            <div className="lecturer-section-heading compact-heading">
+              <div>
+                <h2>Attendance Overview</h2>
+                <p>Weekly engagement for your classes</p>
+              </div>
+              <strong>89%</strong>
+            </div>
+
+            <div className="lecturer-mini-chart" aria-label="Weekly attendance chart">
+              {weeklyAttendance.map((value, index) => (
+                <div key={index} className="lecturer-mini-bar-group">
+                  <div className="lecturer-mini-bar-track">
+                    <div className="lecturer-mini-bar-fill" style={{ height: `${value}%` }} />
+                  </div>
+                  <span>{["M", "T", "W", "T", "F", "S", "S"][index]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lecturer-analytics-card">
+            <div className="lecturer-section-heading compact-heading">
+              <div>
+                <h2>Module Health</h2>
+                <p>Current participation status</p>
+              </div>
+            </div>
+
+            <div className="lecturer-progress-list">
+              {moduleHealth.map((item) => (
+                <div key={item.name} className="lecturer-progress-item">
+                  <div className="lecturer-progress-label">
+                    <span>{item.name}</span>
+                    <strong>{item.value}%</strong>
+                  </div>
+                  <div className="lecturer-progress-track">
+                    <div className={`lecturer-progress-fill ${item.color}`} style={{ width: `${item.value}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="lecturer-stat-grid">
+          {summaryCards.map((card) => (
+            <div key={card.label} className="lecturer-stat-card">
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.note}</small>
+            </div>
+          ))}
+        </section>
 
         <section className="lecturer-module-panel">
           <div className="lecturer-section-heading">
@@ -376,6 +505,91 @@ console.log("NUMBER OF MODULES:", response.data?.length);
               </div>
             </>
           )}
+        </section>
+
+        <section className="lecturer-notification-panel">
+          <div className="lecturer-section-heading">
+            <div>
+              <h2>Send Student Notification</h2>
+              <p>{notificationSummary}</p>
+            </div>
+          </div>
+
+          <div className="lecturer-notification-layout">
+            <form className="lecturer-notification-form" onSubmit={handleSendNotification}>
+              <div className="lecturer-form-row">
+                <label htmlFor="notice-type">Notification type</label>
+                <select
+                  id="notice-type"
+                  name="type"
+                  value={noticeForm.type}
+                  onChange={handleNoticeChange}
+                >
+                  <option value="cancelled">Class cancelled</option>
+                  <option value="late">Running late</option>
+                </select>
+              </div>
+
+              <div className="lecturer-form-row">
+                <label htmlFor="notice-title">Title</label>
+                <input
+                  id="notice-title"
+                  name="title"
+                  type="text"
+                  placeholder={selectedModule ? `Update for ${selectedModule.module_code}` : "Class update"}
+                  value={noticeForm.title}
+                  onChange={handleNoticeChange}
+                />
+              </div>
+
+              <div className="lecturer-form-row">
+                <label htmlFor="notice-message">Message</label>
+                <textarea
+                  id="notice-message"
+                  name="message"
+                  rows="4"
+                  placeholder="Tell students what changed and when to expect the next class or update."
+                  value={noticeForm.message}
+                  onChange={handleNoticeChange}
+                />
+              </div>
+
+              <button type="submit" className="lecturer-primary-button" disabled={!selectedModuleId}>
+                Send notification
+              </button>
+            </form>
+
+            <div className="lecturer-notification-list">
+              <h3>Recent alerts</h3>
+
+              {notifications.length === 0 ? (
+                <div className="lecturer-notice-empty">
+                  No student alerts sent yet.
+                </div>
+              ) : (
+                notifications.map((item) => (
+                  <div key={item.id} className="lecturer-notice-item">
+                    <div className="lecturer-notice-tag">
+                      {item.type === "late" ? "Late" : "Cancelled"}
+                    </div>
+                    <div className="lecturer-notice-copy">
+                      <strong>{item.title}</strong>
+                      <span>{item.moduleCode}</span>
+                      <p>{item.message}</p>
+                    </div>
+                    <small>
+                      {new Date(item.createdAt).toLocaleString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </small>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </section>
 
         <footer className="lecturer-footer">

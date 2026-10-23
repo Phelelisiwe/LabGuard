@@ -7,6 +7,19 @@ function StudentDashboard() {
   const email = localStorage.getItem("email") || "Student";
   const initials = email.charAt(0).toUpperCase();
 
+  const attendanceTrend = [72, 84, 76, 91, 88, 96, 94];
+  const moduleProgress = [
+    { name: "Database Systems", value: 94, color: "blue" },
+    { name: "Web Dev", value: 88, color: "gold" },
+    { name: "Networking", value: 81, color: "green" },
+    { name: "Software Testing", value: 76, color: "purple" },
+  ];
+  const summaryCards = [
+    { label: "Attendance", value: "89%", note: "+7% this month" },
+    { label: "Modules", value: "06", note: "active this term" },
+    { label: "Check-ins", value: "24", note: "logged this week" },
+  ];
+
   const logout = () => {
     localStorage.clear();
     navigate("/login");
@@ -118,6 +131,68 @@ function StudentDashboard() {
         {/* =========================
             QUICK ACCESS
         ========================== */}
+
+        <section className="student-analytics">
+          <div className="student-chart-card">
+            <div className="student-section-header">
+              <div>
+                <span>ATTENDANCE OVERVIEW</span>
+                <h3>Weekly presence</h3>
+              </div>
+              <strong>89%</strong>
+            </div>
+
+            <div className="student-bar-chart" aria-label="Weekly attendance chart">
+              {attendanceTrend.map((value, index) => (
+                <div key={index} className="student-bar-group">
+                  <div className="student-bar-track">
+                    <div
+                      className="student-bar-fill"
+                      style={{ height: `${value}%` }}
+                    />
+                  </div>
+                  <span>{["M", "T", "W", "T", "F", "S", "S"][index]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="student-progress-card">
+            <div className="student-section-header">
+              <div>
+                <span>MODULE STATUS</span>
+                <h3>Progress</h3>
+              </div>
+            </div>
+
+            <div className="student-progress-list">
+              {moduleProgress.map((item) => (
+                <div key={item.name} className="student-progress-item">
+                  <div className="student-progress-label-row">
+                    <span>{item.name}</span>
+                    <strong>{item.value}%</strong>
+                  </div>
+                  <div className="student-progress-track">
+                    <div
+                      className={`student-progress-fill ${item.color}`}
+                      style={{ width: `${item.value}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="student-metric-grid" aria-label="Student dashboard summary metrics">
+          {summaryCards.map((card) => (
+            <div key={card.label} className="student-metric-card">
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.note}</small>
+            </div>
+          ))}
+        </section>
 
         <section className="modern-student-section">
 

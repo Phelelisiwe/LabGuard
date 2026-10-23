@@ -236,9 +236,14 @@ function StudentCheckIn() {
       );
 
       if (response.data.success) {
+        const action = response.data.action || "check_in";
+        const isCheckout = action === "check_out";
+
         setMessage(
           response.data.message ||
-            "Face verified. Attendance recorded successfully."
+            (isCheckout
+              ? "Face verified. Attendance checked out successfully."
+              : "Face verified. Attendance checked in successfully.")
         );
         stopCamera();
         await fetchAttendance();
@@ -299,9 +304,14 @@ function StudentCheckIn() {
       );
 
       if (response.data.success) {
+        const action = response.data.action || "check_in";
+        const isCheckout = action === "check_out";
+
         setMessage(
           response.data.message ||
-            "Fingerprint verified. Attendance recorded successfully."
+            (isCheckout
+              ? "Fingerprint verified. Attendance checked out successfully."
+              : "Fingerprint verified. Attendance checked in successfully.")
         );
         await fetchAttendance();
         await loadActiveClass();
@@ -360,9 +370,14 @@ function StudentCheckIn() {
           );
 
           if (response.data.success) {
+            const action = response.data.action || "check_in";
+            const isCheckout = action === "check_out";
+
             setMessage(
               response.data.message ||
-                "GPS attendance recorded successfully."
+                (isCheckout
+                  ? "GPS attendance checked out successfully."
+                  : "GPS attendance checked in successfully.")
             );
             await fetchAttendance();
             await loadActiveClass();
@@ -445,27 +460,26 @@ function StudentCheckIn() {
     "Active class";
 
   return (
-    <div className="attendance-page">
-      <header className="attendance-header">
-        <div className="attendance-brand">
-          <div className="tut-logo">TUT</div>
-          <div className="brand-line"></div>
-          <div>
-            <h1>LabGuard</h1>
-            <span>Laboratory Management System</span>
+    <div className="modern-student-dashboard student-page-shell">
+      <header className="modern-student-nav">
+        <div
+          className="modern-student-brand"
+          onClick={() => navigate("/student")}
+        >
+          <div className="modern-student-logo">LG</div>
+          <div className="modern-student-brand-text">
+            <strong>LabGuard</strong>
+            <span>Student Portal</span>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="attendance-back-button"
-          onClick={() => navigate("/student")}
-        >
-          ← Back
+        <button type="button" className="modern-student-logout" onClick={() => navigate("/student")}>
+          <span>←</span>
+          Dashboard
         </button>
       </header>
 
-      <main className="attendance-main">
+      <main className="modern-student-content student-content-compact">
         <div className="attendance-title">
           <p>STUDENT PORTAL</p>
           <h2>Lab Attendance</h2>
@@ -685,9 +699,9 @@ function StudentCheckIn() {
         </section>
       </main>
 
-      <footer className="attendance-footer">
+      <footer className="modern-student-footer student-footer-compact">
         <span>LabGuard • Laboratory Management System</span>
-        <span>Tshwane University of Technology</span>
+        <span>Quick attendance access</span>
       </footer>
     </div>
   );

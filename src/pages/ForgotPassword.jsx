@@ -20,7 +20,7 @@ function ForgotPassword() {
 
     try {
       const response = await axios.post(
-        "https://labguard-dklp.onrender.com/auth/forgot-password",
+        `${import.meta.env.VITE_API_URL}/auth/forgot-password`,
         {
           email: email.trim(),
         }
