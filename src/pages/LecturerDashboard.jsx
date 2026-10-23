@@ -187,13 +187,12 @@ console.log("NUMBER OF MODULES:", response.data?.length);
   const summaryCards = [
     { label: "Active students", value: "128", note: "+12 this week" },
     { label: "Attendance rate", value: "89%", note: "above target" },
-    { label: "Sessions", value: "18", note: "this month" },
+    { label: "Alerts", value: String(notifications.length), note: notifications.length === 1 ? "recent alert" : "recent alerts" },
   ];
   const moduleHealth = [
     { name: "Web Dev", value: 92, color: "blue" },
     { name: "DB Systems", value: 88, color: "gold" },
     { name: "Networking", value: 81, color: "green" },
-    { name: "Testing", value: 76, color: "purple" },
   ];
 
   return (
