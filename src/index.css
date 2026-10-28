@@ -8770,6 +8770,35 @@ html {
   transform: translateX(4px);
 }
 
+.modern-update-account-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #e1e9f1;
+  border-radius: 9px;
+  background: #f7faff;
+}
+
+.modern-update-account-detail span {
+  color: #7890a5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.modern-update-account-detail strong {
+  overflow-wrap: anywhere;
+  color: #09213b;
+  font-size: 14px;
+}
+
+.modern-update-account-detail small {
+  color: #697c90;
+  font-size: 11px;
+}
+
 
 /* =========================
    SECURITY NOTICE
@@ -9470,5 +9499,4 @@ html {
     gap: 5px;
   }
 }
-
 

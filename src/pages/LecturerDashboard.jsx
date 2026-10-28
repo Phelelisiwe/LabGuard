@@ -15,6 +15,9 @@ function LecturerDashboard() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attendanceStarting, setAttendanceStarting] = useState(false);
+  const [scheduledClasses, setScheduledClasses] = useState([]);
+  const [attendanceMessage, setAttendanceMessage] = useState("");
   const [notifications, setNotifications] = useState(() => {
     try {
       const stored = localStorage.getItem("lecturer_notifications");
@@ -127,6 +130,56 @@ console.log("NUMBER OF MODULES:", response.data?.length);
     navigate(routes[page]);
   };
 
+  const startAttendance = async (timetableId) => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setAttendanceStarting(true);
+      setError("");
+      setAttendanceMessage("");
+
+      const response = await axios.post(
+        `${API_URL}/attendance-session/start`,
+        null,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: timetableId ? { timetable_id: timetableId } : undefined,
+        }
+      );
+
+      if (response.data.multiple_classes) {
+        setScheduledClasses(response.data.classes || []);
+        return;
+      }
+
+      const moduleId = String(response.data.module_id);
+      localStorage.setItem("selected_lecturer_module", moduleId);
+      setSelectedModuleId(moduleId);
+      setScheduledClasses([]);
+      setAttendanceMessage(
+        response.data.already_active
+          ? "An attendance session is already active."
+          : "Attendance session started. Students can now check in from their phones."
+      );
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.clear();
+        navigate("/login");
+        return;
+      }
+
+      setError(
+        err.response?.data?.detail ||
+          "Unable to start attendance. Check your timetable and try again."
+      );
+    } finally {
+      setAttendanceStarting(false);
+    }
+  };
+
   const selectedModule = modules.find(
     (module) => String(module.id) === String(selectedModuleId)
   );
@@ -203,11 +256,68 @@ console.log("NUMBER OF MODULES:", response.data?.length);
             <h1>Dashboard</h1>
           </div>
 
+          <button
+            type="button"
+            className="lecturer-start-attendance-button"
+            onClick={() => startAttendance()}
+            disabled={attendanceStarting}
+          >
+            {attendanceStarting ? "Starting..." : "Start attendance"}
+          </button>
+
           <div className="lecturer-topbar-profile">
             <div className="lecturer-avatar">{lecturerInitial}</div>
             <span>{lecturerEmail}</span>
           </div>
         </header>
+
+        {attendanceMessage && (
+          <div className="lecturer-attendance-message" role="status">
+            <span>{attendanceMessage}</span>
+            <button
+              type="button"
+              onClick={() =>
+                navigate(`/lecturer/attendance/${selectedModuleId}`)
+              }
+            >
+              Open attendance register
+            </button>
+          </div>
+        )}
+
+        {scheduledClasses.length > 0 && (
+          <section className="lecturer-scheduled-class-picker">
+            <div>
+              <h2>Select a class to start</h2>
+              <p>More than one class is scheduled at this time.</p>
+            </div>
+            <div className="lecturer-scheduled-class-options">
+              {scheduledClasses.map((scheduledClass) => {
+                const module = modules.find(
+                  (item) => item.id === scheduledClass.module_id
+                );
+
+                return (
+                  <button
+                    key={scheduledClass.timetable_id}
+                    type="button"
+                    onClick={() => startAttendance(scheduledClass.timetable_id)}
+                    disabled={attendanceStarting}
+                  >
+                    <strong>
+                      {module?.module_code || `Module ${scheduledClass.module_id}`}
+                    </strong>
+                    <span>
+                      {scheduledClass.start_time}–{scheduledClass.end_time}
+                      {" · "}
+                      {scheduledClass.laboratory}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="lecturer-welcome">
           <div>

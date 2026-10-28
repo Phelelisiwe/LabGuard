@@ -285,6 +285,69 @@
   white-space: nowrap;
 }
 
+.lecturer-students-page .ls-download-button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid var(--ls-blue);
+  border-radius: 8px;
+  background: var(--ls-blue);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.lecturer-students-page .ls-download-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #0a2d57;
+}
+
+.lecturer-students-page .ls-download-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.lecturer-students-page .ls-roster-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0 0 18px;
+}
+
+.lecturer-students-page .ls-roster-toolbar label {
+  color: var(--ls-navy);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.lecturer-students-page .ls-roster-toolbar input {
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 420px;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #cbd6e3;
+  border-radius: 8px;
+  color: var(--ls-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.lecturer-students-page .ls-roster-toolbar input:focus {
+  outline: 3px solid rgba(16, 59, 112, 0.15);
+  border-color: var(--ls-blue);
+}
+
+.lecturer-students-page .ls-roster-toolbar > span {
+  margin-left: auto;
+  color: var(--ls-muted);
+  font-size: 12px;
+}
+
 /* TABLE */
 
 .lecturer-students-page .ls-table-scroll {
@@ -702,6 +765,24 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 14px;
+  }
+
+  .lecturer-students-page .ls-download-button {
+    width: 100%;
+  }
+
+  .lecturer-students-page .ls-roster-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lecturer-students-page .ls-roster-toolbar input {
+    flex-basis: auto;
+    max-width: none;
+  }
+
+  .lecturer-students-page .ls-roster-toolbar > span {
+    margin-left: 0;
   }
 
   .lecturer-students-page .ls-records-title h2 {

@@ -24,6 +24,64 @@ function escapeHtml(value) {
   });
 }
 
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getAttendanceRange(period, selectedDate, semesterStart, semesterEnd) {
+  if (period === "all") return null;
+
+  if (period === "academic-year") {
+    if (!/^\d{4}$/.test(String(selectedDate))) return null;
+    return {
+      start_date: `${selectedDate}-01-01`,
+      end_date: `${selectedDate}-12-31`,
+    };
+  }
+
+  if (period === "semester") {
+    if (!semesterStart || !semesterEnd || semesterStart > semesterEnd) {
+      return null;
+    }
+
+    return { start_date: semesterStart, end_date: semesterEnd };
+  }
+
+  const date = new Date(`${selectedDate}T00:00:00`);
+
+  if (period === "day") {
+    return { start_date: selectedDate, end_date: selectedDate };
+  }
+
+  if (period === "week") {
+    const start = new Date(date);
+    const dayOfWeek = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - dayOfWeek);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return {
+      start_date: formatDateInput(start),
+      end_date: formatDateInput(end),
+    };
+  }
+
+  if (period === "month") {
+    return {
+      start_date: formatDateInput(
+        new Date(date.getFullYear(), date.getMonth(), 1)
+      ),
+      end_date: formatDateInput(
+        new Date(date.getFullYear(), date.getMonth() + 1, 0)
+      ),
+    };
+  }
+
+  return null;
+}
+
 function LecturerAttendance() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
@@ -31,6 +89,16 @@ function LecturerAttendance() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState("all");
+  const [periodDate, setPeriodDate] = useState(() =>
+    formatDateInput(new Date())
+  );
+  const [periodYear, setPeriodYear] = useState(() =>
+    String(new Date().getFullYear())
+  );
+  const [semesterStart, setSemesterStart] = useState("");
+  const [semesterEnd, setSemesterEnd] = useState("");
+  const [appliedRange, setAppliedRange] = useState(null);
 
   useEffect(() => {
     const loadAttendance = async () => {
@@ -43,7 +111,11 @@ function LecturerAttendance() {
         }
 
         const response = await axios.get(
-          `${API_URL}/lecturer/modules/${moduleId}/attendance`,
+          `${API_URL}/lecturer/modules/${moduleId}/attendance${
+            appliedRange
+              ? `?${new URLSearchParams(appliedRange).toString()}`
+              : ""
+          }`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -69,7 +141,47 @@ function LecturerAttendance() {
     };
 
     loadAttendance();
-  }, [moduleId, navigate]);
+  }, [moduleId, navigate, appliedRange]);
+
+  const applyPeriod = (event) => {
+    event.preventDefault();
+    setError("");
+
+    if (
+      period === "semester" &&
+      (!semesterStart || !semesterEnd || semesterStart > semesterEnd)
+    ) {
+      setError("Enter a valid semester start and end date.");
+      return;
+    }
+
+    const nextRange = getAttendanceRange(
+      period,
+      period === "academic-year" ? periodYear : periodDate,
+      semesterStart,
+      semesterEnd
+    );
+
+    if (period === "academic-year" && !nextRange) {
+      setError("Enter a valid four-digit academic year.");
+      return;
+    }
+
+    if (!nextRange && !appliedRange) return;
+
+    setLoading(true);
+    setAppliedRange(nextRange);
+  };
+
+  const clearPeriod = () => {
+    setPeriod("all");
+    setPeriodDate(formatDateInput(new Date()));
+    setSemesterStart("");
+    setSemesterEnd("");
+    setError("");
+    if (appliedRange) setLoading(true);
+    setAppliedRange(null);
+  };
 
   const downloadCSV = () => {
     if (!data) return;
@@ -81,6 +193,9 @@ function LecturerAttendance() {
       ["LabGuard Attendance Register"],
       ["Module Code", moduleCode],
       ["Module Name", moduleName],
+      ...(appliedRange
+        ? [["Period", `${appliedRange.start_date} to ${appliedRange.end_date}`]]
+        : []),
       ["Total Records", data.attendance?.length || 0],
       [],
       [
@@ -113,7 +228,10 @@ function LecturerAttendance() {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `${moduleCode.replace(/[^a-z0-9_-]/gi, "_")}_attendance.csv`;
+    const dateSuffix = appliedRange
+      ? `_${appliedRange.start_date}_to_${appliedRange.end_date}`
+      : "";
+    link.download = `${moduleCode.replace(/[^a-z0-9_-]/gi, "_")}_attendance${dateSuffix}.csv`;
 
     document.body.appendChild(link);
     link.click();
@@ -227,6 +345,11 @@ function LecturerAttendance() {
           <div class="details">
             <strong>Module:</strong> ${escapeHtml(moduleCode)}<br />
             <strong>Module Name:</strong> ${escapeHtml(moduleName)}<br />
+            ${
+              appliedRange
+                ? `<strong>Period:</strong> ${escapeHtml(appliedRange.start_date)} to ${escapeHtml(appliedRange.end_date)}<br />`
+                : ""
+            }
             <strong>Total Records:</strong> ${records.length}<br />
             <strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString())}
           </div>
@@ -322,6 +445,106 @@ function LecturerAttendance() {
                 <strong>{data.attendance?.length || 0}</strong>
                 <span>Attendance Records</span>
               </div>
+            </section>
+
+            <section className="attendance-period-card">
+              <div className="attendance-period-heading">
+                <h2>Attendance period</h2>
+                <p>
+                  Filter the register by day, week, month or the dates of a
+                  semester. Downloads use the selected period.
+                </p>
+              </div>
+              <form className="attendance-period-form" onSubmit={applyPeriod}>
+                <div className="attendance-period-field">
+                  <label htmlFor="attendance-period">Period</label>
+                  <select
+                    id="attendance-period"
+                    value={period}
+                    onChange={(event) => setPeriod(event.target.value)}
+                  >
+                    <option value="all">All records</option>
+                    <option value="academic-year">Academic year</option>
+                    <option value="semester">Semester</option>
+                    <option value="month">Month</option>
+                    <option value="week">Week</option>
+                    <option value="day">Day</option>
+                  </select>
+                </div>
+
+                {period === "academic-year" ? (
+                  <div className="attendance-period-field">
+                    <label htmlFor="attendance-period-year">Academic year</label>
+                    <input
+                      id="attendance-period-year"
+                      type="number"
+                      min="2000"
+                      max="9999"
+                      step="1"
+                      value={periodYear}
+                      onChange={(event) => setPeriodYear(event.target.value)}
+                      required
+                    />
+                  </div>
+                ) : period === "semester" ? (
+                  <>
+                    <div className="attendance-period-field">
+                      <label htmlFor="semester-start">Semester starts</label>
+                      <input
+                        id="semester-start"
+                        type="date"
+                        value={semesterStart}
+                        onChange={(event) => setSemesterStart(event.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="attendance-period-field">
+                      <label htmlFor="semester-end">Semester ends</label>
+                      <input
+                        id="semester-end"
+                        type="date"
+                        value={semesterEnd}
+                        onChange={(event) => setSemesterEnd(event.target.value)}
+                        min={semesterStart || undefined}
+                        required
+                      />
+                    </div>
+                  </>
+                ) : period !== "all" ? (
+                  <div className="attendance-period-field">
+                    <label htmlFor="attendance-period-date">
+                      {period === "day" ? "Choose day" : "Choose a date"}
+                    </label>
+                    <input
+                      id="attendance-period-date"
+                      type="date"
+                      value={periodDate}
+                      onChange={(event) => setPeriodDate(event.target.value)}
+                      required
+                    />
+                  </div>
+                ) : null}
+
+                <div className="attendance-period-buttons">
+                  <button type="submit" className="attendance-download-button">
+                    Apply period
+                  </button>
+                  {appliedRange && (
+                    <button
+                      type="button"
+                      className="attendance-period-clear"
+                      onClick={clearPeriod}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </form>
+              {appliedRange && (
+                <p className="attendance-period-active">
+                  Showing {appliedRange.start_date} through {appliedRange.end_date}
+                </p>
+              )}
             </section>
 
             <section className="attendance-actions-card">

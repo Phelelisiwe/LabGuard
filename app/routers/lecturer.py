@@ -137,6 +137,65 @@ def get_module_students(
     }
 
 
+@router.get("/modules/{module_id}/students/download")
+def download_module_students(
+    module_id: int,
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db)
+):
+    """Download the student roster for a lecturer's module as CSV."""
+
+    lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
+
+    students = (
+        db.query(Student)
+        .join(
+            StudentModule,
+            Student.id == StudentModule.student_id
+        )
+        .filter(StudentModule.module_id == module.id)
+        .order_by(Student.student_number)
+        .all()
+    )
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Module Code",
+        "Module Name",
+        "Student Number",
+        "First Name",
+        "Last Name",
+        "Course",
+        "Year",
+        "Email"
+    ])
+
+    for student in students:
+        writer.writerow([
+            module.module_code,
+            module.module_name,
+            student.student_number,
+            student.first_name,
+            student.last_name,
+            student.course,
+            student.current_year,
+            student.email
+        ])
+
+    output.seek(0)
+    filename = f"{module.module_code}_students.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
 # ============================================================
 # 3. VIEW ALL ATTENDANCE RECORDS FOR A MODULE
 # ============================================================
@@ -144,6 +203,8 @@ def get_module_students(
 @router.get("/modules/{module_id}/attendance")
 def get_module_attendance(
     module_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None,
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db)
 ):
@@ -159,24 +220,30 @@ def get_module_attendance(
         db
     )
 
-    records = (
-        db.query(
-            Attendance,
-            Student
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date must be on or before end date."
         )
+
+    records_query = (
+        db.query(Attendance, Student)
         .join(
             Student,
             Attendance.student_id == Student.id
         )
-        .filter(
-            Attendance.module_id == module.id
-        )
-        .order_by(
-            Attendance.date.desc(),
-            Attendance.time_in.desc()
-        )
-        .all()
+        .filter(Attendance.module_id == module.id)
     )
+
+    if start_date:
+        records_query = records_query.filter(Attendance.date >= start_date)
+    if end_date:
+        records_query = records_query.filter(Attendance.date <= end_date)
+
+    records = records_query.order_by(
+        Attendance.date.desc(),
+        Attendance.time_in.desc()
+    ).all()
 
     return {
         "module": {
@@ -372,6 +439,8 @@ def get_overall_attendance(
 @router.get("/modules/{module_id}/attendance/download")
 def download_module_attendance(
     module_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None,
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db)
 ):
@@ -387,24 +456,30 @@ def download_module_attendance(
         db
     )
 
-    records = (
-        db.query(
-            Attendance,
-            Student
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date must be on or before end date."
         )
+
+    records_query = (
+        db.query(Attendance, Student)
         .join(
             Student,
             Attendance.student_id == Student.id
         )
-        .filter(
-            Attendance.module_id == module.id
-        )
-        .order_by(
-            Attendance.date.asc(),
-            Student.student_number.asc()
-        )
-        .all()
+        .filter(Attendance.module_id == module.id)
     )
+
+    if start_date:
+        records_query = records_query.filter(Attendance.date >= start_date)
+    if end_date:
+        records_query = records_query.filter(Attendance.date <= end_date)
+
+    records = records_query.order_by(
+        Attendance.date.asc(),
+        Student.student_number.asc()
+    ).all()
 
     output = StringIO()
 

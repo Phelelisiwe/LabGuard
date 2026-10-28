@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import "./LecturerStudents.css";
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
@@ -11,6 +12,8 @@ function LecturerStudents() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -25,9 +28,7 @@ function LecturerStudents() {
         const response = await axios.get(
           `${API_URL}/lecturer/modules/${moduleId}/students`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
@@ -39,10 +40,7 @@ function LecturerStudents() {
           return;
         }
 
-        setError(
-          err.response?.data?.detail ||
-            "Failed to load students."
-        );
+        setError(err.response?.data?.detail || "Failed to load students.");
       } finally {
         setLoading(false);
       }
@@ -51,343 +49,238 @@ function LecturerStudents() {
     loadStudents();
   }, [moduleId, navigate]);
 
+  const filteredStudents = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const students = data?.students || [];
+
+    if (!query) return students;
+
+    return students.filter((student) =>
+      [
+        student.student_number,
+        student.first_name,
+        student.last_name,
+        student.course,
+        student.email,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [data, search]);
+
+  const downloadStudentList = async () => {
+    try {
+      setDownloading(true);
+      setError("");
+
+      const token = localStorage.getItem("access_token");
+      const response = await axios.get(
+        `${API_URL}/lecturer/modules/${moduleId}/students/download`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      const moduleCode = data?.module?.module_code || "module";
+
+      link.href = url;
+      link.download = `${moduleCode}_students.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to download the student list.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
-    <div className="dashboard lecturer-page lecturer-students-page">
-
-      {/* HEADER */}
-      <header className="lecturer-page-header">
-
-        <div className="page-heading">
-
-          <span className="page-label">
-            LECTURER PORTAL
-          </span>
-
-          <h1>
-            {data?.module?.module_code || "Module"} Students
-          </h1>
-
+    <div className="lecturer-students-page">
+      <header className="ls-header">
+        <div className="ls-header-text">
+          <span className="ls-eyebrow">LECTURER PORTAL</span>
+          <h1>{data?.module?.module_code || "Module"} students</h1>
           <p>
             {data?.module?.module_name ||
-              "Students registered for this module"}
+              "Review students registered for this module."}
           </p>
-
         </div>
 
         <button
-          className="back-button"
-          onClick={() => navigate("/lecturer/modules")}
+          type="button"
+          className="ls-back-button"
+          onClick={() => navigate("/lecturer")}
         >
-          ΓåÉ Back to Modules
+          <span aria-hidden="true">←</span> Dashboard
         </button>
-
       </header>
 
-
-      {/* MAIN */}
-      <main className="lecturer-page-content">
-
-        {/* LOADING */}
+      <main className="ls-content">
         {loading && (
-          <div className="status-card">
-            <div className="loading-icon">
-              Γƒ│
-            </div>
-
-            <h2>
-              Loading Students
-            </h2>
-
-            <p>
-              Please wait while the student list is loaded.
-            </p>
-          </div>
+          <section className="ls-records-card ls-status-card" aria-live="polite">
+            <div className="ls-spinner" />
+            <h2>Loading students</h2>
+            <p>Please wait while the module roster is loaded.</p>
+          </section>
         )}
 
-
-        {/* ERROR */}
         {error && (
-          <div className="error-card">
-
-            <div className="error-icon">
-              !
-            </div>
-
+          <section className="ls-error-card" role="alert">
+            <div className="ls-error-icon">!</div>
             <div>
-              <h3>
-                Unable to Load Students
-              </h3>
-
-              <p>
-                {error}
-              </p>
+              <h2>Unable to load students</h2>
+              <p>{error}</p>
             </div>
-
-          </div>
+          </section>
         )}
 
-
-        {/* CONTENT */}
         {!loading && !error && data && (
           <>
-
-            {/* MODULE INTRO */}
-            <section className="module-hero-card">
-
-              <div className="module-hero-icon">
-                ≡ƒæ¿ΓÇì≡ƒÄô
+            <section className="ls-module-card">
+              <div className="ls-module-icon" aria-hidden="true">▤</div>
+              <div className="ls-module-info">
+                <span className="ls-eyebrow">MODULE ROSTER</span>
+                <h2>{data.module.module_code}</h2>
+                <p>{data.module.module_name}</p>
               </div>
-
-              <div className="module-hero-text">
-
-                <span>
-                  MODULE STUDENTS
-                </span>
-
-                <h2>
-                  {data.module.module_code}
-                </h2>
-
-                <p>
-                  {data.module.module_name}
-                </p>
-
+              <div className="ls-total">
+                <strong>{data.total_students}</strong>
+                <span>Registered students</span>
               </div>
-
-              <div className="student-total">
-
-                <strong>
-                  {data.total_students}
-                </strong>
-
-                <span>
-                  Students
-                </span>
-
-              </div>
-
             </section>
 
-
-            {/* STUDENT LIST */}
-            <section className="students-section">
-
-              <div className="section-heading">
-
-                <div>
-                  <span>
-                    REGISTERED STUDENTS
-                  </span>
-
-                  <h2>
-                    Student List
-                  </h2>
-
+            <section className="ls-records-card">
+              <div className="ls-records-header">
+                <div className="ls-records-title">
+                  <span className="ls-eyebrow">REGISTERED STUDENTS</span>
+                  <h2>Student list</h2>
                   <p>
-                    Students currently registered for this module.
+                    Search the module roster or download the complete list as a
+                    CSV file.
                   </p>
                 </div>
-
-                <div className="student-count-badge">
-                  {data.total_students} Registered
-                </div>
-
+                <button
+                  type="button"
+                  className="ls-download-button"
+                  onClick={downloadStudentList}
+                  disabled={downloading}
+                >
+                  {downloading ? "Preparing list..." : "Download student list"}
+                </button>
               </div>
 
+              <div className="ls-roster-toolbar">
+                <label htmlFor="student-search">Search students</label>
+                <input
+                  id="student-search"
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Name, number, course or email"
+                />
+                <span>
+                  Showing {filteredStudents.length} of {data.total_students}
+                </span>
+              </div>
 
-              {data.students.length === 0 ? (
-
-                <div className="empty-students">
-
-                  <div className="empty-icon">
-                    ≡ƒæÑ
-                  </div>
-
+              {filteredStudents.length === 0 ? (
+                <div className="ls-empty">
+                  <div className="ls-empty-icon" aria-hidden="true">⌕</div>
                   <h3>
-                    No Students Registered
+                    {data.students.length === 0
+                      ? "No students registered"
+                      : "No students match your search"}
                   </h3>
-
                   <p>
-                    There are currently no students registered
-                    for this module.
+                    {data.students.length === 0
+                      ? "Students registered for this module will appear here."
+                      : "Try another name, student number, course or email."}
                   </p>
-
                 </div>
-
               ) : (
-
-                <div className="student-table-wrapper">
-
-                  <table className="students-table">
-
+                <div className="ls-table-scroll">
+                  <table className="ls-table">
                     <thead>
                       <tr>
-                        <th>
-                          Student Number
-                        </th>
-
-                        <th>
-                          Student
-                        </th>
-
-                        <th>
-                          Course
-                        </th>
-
-                        <th>
-                          Year
-                        </th>
-
-                        <th>
-                          Email
-                        </th>
+                        <th>Student number</th>
+                        <th>Student</th>
+                        <th>Course</th>
+                        <th>Year</th>
+                        <th>Email</th>
                       </tr>
                     </thead>
-
                     <tbody>
-
-                      {data.students.map((student) => (
-
+                      {filteredStudents.map((student) => (
                         <tr key={student.id}>
-
                           <td>
-                            <span className="student-number">
+                            <span className="ls-student-number">
                               {student.student_number}
                             </span>
                           </td>
-
                           <td>
-
-                            <div className="student-name-cell">
-
-                              <div className="student-avatar">
-                                {student.first_name
-                                  ?.charAt(0)
-                                  .toUpperCase()}
+                            <div className="ls-student-cell">
+                              <div className="ls-avatar" aria-hidden="true">
+                                {student.first_name?.charAt(0).toUpperCase()}
                               </div>
-
-                              <div>
+                              <div className="ls-student-info">
                                 <strong>
-                                  {student.first_name}{" "}
-                                  {student.last_name}
+                                  {student.first_name} {student.last_name}
                                 </strong>
-
-                                <small>
-                                  Student
-                                </small>
+                                <small>Student</small>
                               </div>
-
                             </div>
-
                           </td>
-
-                          <td>
-                            <span className="course-badge">
-                              {student.course}
-                            </span>
-                          </td>
-
-                          <td>
-                            <span className="year-badge">
-                              Year {student.current_year}
-                            </span>
-                          </td>
-
-                          <td>
-                            <span className="student-email">
-                              {student.email}
-                            </span>
-                          </td>
-
+                          <td><span className="ls-course">{student.course}</span></td>
+                          <td><span className="ls-year">Year {student.current_year}</span></td>
+                          <td><span className="ls-email">{student.email}</span></td>
                         </tr>
-
                       ))}
-
                     </tbody>
-
                   </table>
-
                 </div>
-
               )}
-
             </section>
 
-
-            {/* QUICK ACTIONS */}
-            <section className="quick-actions-card">
-
-              <div>
-
-                <span>
-                  MODULE MANAGEMENT
-                </span>
-
-                <h3>
-                  Continue Managing This Module
-                </h3>
-
+            <section className="ls-actions-card">
+              <div className="ls-actions-text">
+                <span className="ls-eyebrow">MODULE MANAGEMENT</span>
+                <h2>Continue managing this module</h2>
                 <p>
-                  View attendance records or see the overall
-                  attendance performance of your students.
+                  Open the attendance register and choose a day, week, month or
+                  semester period to review attendance.
                 </p>
-
               </div>
-
-              <div className="quick-actions-buttons">
-
+              <div className="ls-actions">
                 <button
-                  onClick={() =>
-                    navigate(
-                      `/lecturer/attendance/${moduleId}`
-                    )
-                  }
+                  type="button"
+                  className="ls-button ls-button-yellow"
+                  onClick={() => navigate(`/lecturer/attendance/${moduleId}`)}
                 >
-                  View Attendance
+                  View attendance <span aria-hidden="true">→</span>
                 </button>
-
                 <button
-                  onClick={() =>
-                    navigate(
-                      `/lecturer/attendance/${moduleId}/overall`
-                    )
-                  }
+                  type="button"
+                  className="ls-button ls-button-outline"
+                  onClick={() => navigate("/lecturer/modules")}
                 >
-                  Overall Attendance
+                  Back to modules
                 </button>
-
-                <button
-                  onClick={() =>
-                    navigate("/lecturer/modules")
-                  }
-                  className="secondary-action"
-                >
-                  Back to Modules
-                </button>
-
               </div>
-
             </section>
-
           </>
         )}
-
       </main>
 
-
-      {/* FOOTER */}
-      <footer className="lecturer-page-footer">
-
-        <strong>
-          LabGuard
-        </strong>
-
-        <span>
-          Laboratory Management System
-        </span>
-
+      <footer className="ls-footer">
+        <strong>LabGuard</strong>
+        <span>Laboratory Management System</span>
       </footer>
-
     </div>
   );
 }

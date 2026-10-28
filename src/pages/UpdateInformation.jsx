@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 function UpdateInformation() {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
+  const email = localStorage.getItem("email") || "No email on file";
+  const accountType = role
+    ? role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : "Account";
   const changePasswordPath =
     role === "student"
       ? "/student/change-password"
@@ -76,33 +80,28 @@ function UpdateInformation() {
                 <span>✉</span>
               </div>
 
-              <div className="modern-update-status">
-                ACCOUNT
-              </div>
+              <div className="modern-update-status">ACCOUNT</div>
 
             </div>
 
             <div className="modern-update-card-content">
 
-              <h2>Change Email</h2>
+              <h2>Account Email</h2>
 
               <p>
-                Update the email address linked to your
-                LabGuard account. Your new email will be
-                used for account communication and verification.
+                This is the email address currently linked to your LabGuard
+                account. Contact an administrator if it needs to be changed.
               </p>
 
             </div>
 
             <div className="modern-update-divider"></div>
 
-            <button
-              className="modern-update-action"
-              onClick={() => navigate("/update-email")}
-            >
-              <span>Change Email</span>
-              <span className="modern-update-arrow">→</span>
-            </button>
+            <div className="modern-update-account-detail">
+              <span>EMAIL ADDRESS</span>
+              <strong>{email}</strong>
+              <small>{accountType} account</small>
+            </div>
 
           </article>
 

@@ -1251,3 +1251,130 @@
     max-width: none;
   }
 }
+
+.lecturer-start-attendance-button {
+  min-height: 44px;
+  padding: 11px 17px;
+  border: 1px solid var(--lecturer-red);
+  border-radius: 9px;
+  background: var(--lecturer-red);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.lecturer-start-attendance-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #a50d25;
+}
+
+.lecturer-start-attendance-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.lecturer-attendance-message,
+.lecturer-scheduled-class-picker {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #dce6f2;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.lecturer-attendance-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-left: 5px solid #23834e;
+  color: #17683a;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.lecturer-attendance-message button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #23834e;
+  border-radius: 7px;
+  background: #fff;
+  color: #17683a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lecturer-attendance-message button:hover {
+  background: #e8f7ed;
+}
+
+.lecturer-scheduled-class-picker h2 {
+  margin: 0;
+  color: var(--lecturer-blue);
+  font-size: 18px;
+}
+
+.lecturer-scheduled-class-picker p {
+  margin: 6px 0 0;
+  color: var(--lecturer-muted);
+  font-size: 13px;
+}
+
+.lecturer-scheduled-class-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.lecturer-scheduled-class-options button {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 68px;
+  padding: 12px;
+  border: 1px solid var(--lecturer-border);
+  border-radius: 9px;
+  background: #f7faff;
+  color: var(--lecturer-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lecturer-scheduled-class-options button:hover:not(:disabled) {
+  border-color: var(--lecturer-blue);
+  background: #edf4fc;
+}
+
+.lecturer-scheduled-class-options button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.lecturer-scheduled-class-options strong {
+  color: var(--lecturer-blue);
+  font-size: 14px;
+}
+
+.lecturer-scheduled-class-options span {
+  color: var(--lecturer-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .lecturer-start-attendance-button {
+    width: 100%;
+  }
+
+  .lecturer-attendance-message {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

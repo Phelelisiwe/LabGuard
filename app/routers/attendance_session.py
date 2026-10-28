@@ -25,6 +25,7 @@ router = APIRouter(
 
 @router.post("/start")
 def start_attendance_session(
+    timetable_id: int | None = None,
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db),
 ):
@@ -42,6 +43,14 @@ def start_attendance_session(
         Timetable.end_time >= current_time,
         Timetable.active == True,
     ).all()
+
+    if timetable_id is not None:
+        classes = [item for item in classes if item.id == timetable_id]
+        if not classes:
+            raise HTTPException(
+                status_code=400,
+                detail="The selected class is not scheduled at this time.",
+            )
 
     if not classes:
         raise HTTPException(
