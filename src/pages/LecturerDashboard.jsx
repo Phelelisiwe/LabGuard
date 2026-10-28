@@ -196,51 +196,7 @@ console.log("NUMBER OF MODULES:", response.data?.length);
   ];
 
   return (
-    <div className="lecturer-dashboard">
-      <aside className="lecturer-sidebar">
-        <div className="lecturer-logo">
-          <span className="lecturer-logo-icon">L</span>
-          <span>LabGuard</span>
-        </div>
-
-        <nav className="lecturer-sidebar-nav">
-          <button
-            className="lecturer-nav-item active"
-            onClick={() => navigate("/lecturer")}
-          >
-            <span>▦</span>
-            Dashboard
-          </button>
-
-          <button
-            className="lecturer-nav-item"
-            onClick={() => navigate("/lecturer/modules")}
-          >
-            <span>▤</span>
-            My Modules
-          </button>
-
-          <button
-            className="lecturer-nav-item"
-            onClick={() => navigate("/lecturer/update-information")}
-          >
-            <span>⚙</span>
-            Update Information
-          </button>
-        </nav>
-
-        <div className="lecturer-sidebar-bottom">
-          <div className="lecturer-sidebar-user">
-            <div className="lecturer-avatar">{lecturerInitial}</div>
-            <div className="lecturer-user-details">
-              <strong>Lecturer</strong>
-              <span>{lecturerEmail}</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <main className="lecturer-main">
+    <main className="lecturer-main">
         <header className="lecturer-topbar">
           <div>
             <p className="lecturer-eyebrow">LECTURER PORTAL</p>
@@ -594,8 +550,7 @@ console.log("NUMBER OF MODULES:", response.data?.length);
         <footer className="lecturer-footer">
           © 2026 LabGuard. All rights reserved.
         </footer>
-      </main>
-    </div>
+    </main>
   );
 }
 

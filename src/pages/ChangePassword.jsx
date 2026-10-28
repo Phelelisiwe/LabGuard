@@ -6,6 +6,15 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 function ChangePassword() {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role");
+  const updateInformationPath =
+    role === "student"
+      ? "/student/update-information"
+      : role === "lecturer"
+        ? "/lecturer/update-information"
+        : role === "super_admin"
+          ? "/admin/update-information"
+          : "/update-information";
 
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [message, setMessage] = useState("");
@@ -109,7 +118,7 @@ function ChangePassword() {
               <button
                 type="button"
                 className="back-button"
-                onClick={() => navigate("/update-information")}
+                onClick={() => navigate(updateInformationPath)}
               >
                 ← Back
               </button>
@@ -172,7 +181,7 @@ function ChangePassword() {
               <button
                 type="button"
                 className="back-button"
-                onClick={() => navigate("/update-information")}
+                onClick={() => navigate(updateInformationPath)}
               >
                 ← Back to Update Information
               </button>

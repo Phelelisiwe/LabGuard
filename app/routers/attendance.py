@@ -63,7 +63,8 @@ def check_in(
         status_code=403,
         detail=(
             "Direct attendance check-in is disabled. "
-            "Please use Face OR Fingerprint verification."
+            "Please use the LabGuard fingerprint circuit. "
+            "The first scan records check-in and the second scan records checkout."
         ),
     )
 
@@ -96,26 +97,14 @@ def check_out(
         Attendance.date == today,
     ).first()
 
-    if not attendance:
-
-        raise HTTPException(
-            status_code=404,
-            detail="No check-in record found for today.",
-        )
-
-    if attendance.time_out is not None:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Student has already checked out.",
-        )
-
-    attendance.time_out = datetime.now().time()
-
-    db.commit()
-    db.refresh(attendance)
-
-    return attendance
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "Direct attendance checkout is disabled. "
+            "Please use the fingerprint circuit scanner. "
+            "The first scan records check-in and the second scan records checkout."
+        ),
+    )
 
 
 # =========================================================
@@ -295,44 +284,11 @@ def gps_check_in(
             ),
         )
 
-    # Prevent duplicate attendance for the same module and date.
-    existing = db.query(Attendance).filter(
-        Attendance.student_id == student_id,
-        Attendance.module_id == session.module_id,
-        Attendance.date == session.session_date,
-    ).first()
-
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="You have already been marked present for this class.",
-        )
-
-    attendance = Attendance(
-        student_id=student_id,
-        module_id=session.module_id,
-        date=session.session_date,
-        time_in=now,
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "GPS check-in is disabled. "
+            "Use the LabGuard fingerprint circuit scanner. "
+            "The first scan records check-in and the second scan records checkout."
+        ),
     )
-
-    try:
-        db.add(attendance)
-        db.commit()
-        db.refresh(attendance)
-    except Exception:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Could not record GPS attendance.",
-        )
-
-    return {
-        "success": True,
-        "message": "GPS attendance recorded successfully.",
-        "attendance_id": attendance.id,
-        "module_id": session.module_id,
-        "date": str(attendance.date),
-        "time_in": str(attendance.time_in),
-        "distance_metres": round(distance, 2),
-        "method": "gps",
-    }

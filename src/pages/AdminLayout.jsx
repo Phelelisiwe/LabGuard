@@ -8,10 +8,11 @@ const navigation = [
   { label: "Register Employee", short: "EM", path: "/admin/register-employee" },
   { label: "Manage Students", short: "MS", path: "/admin/students" },
   { label: "Manage Employees", short: "ME", path: "/admin/employees" },
-  { label: "Biometric Registration", short: "BR", path: "/admin/biometric" },
   { label: "Create Module", short: "CM", path: "/admin/create-module" },
   { label: "Assign Student Module", short: "AS", path: "/admin/assign-student" },
   { label: "Assign Lecturer", short: "AL", path: "/admin/assign-lecturer" },
+  { label: "Update Information", short: "UI", path: "/admin/update-information" },
+  { label: "Change Password", short: "PW", path: "/admin/change-password" },
   { label: "Delete User", short: "DU", path: "/admin/delete-user", danger: true },
 ];
 

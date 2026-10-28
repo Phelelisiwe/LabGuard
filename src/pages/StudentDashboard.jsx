@@ -320,7 +320,7 @@ function StudentDashboard() {
 
             <button
               className="modern-student-tool"
-              onClick={() => navigate("/update-information")}
+              onClick={() => navigate("/student/update-information")}
             >
 
               <div className="modern-student-tool-icon purple">

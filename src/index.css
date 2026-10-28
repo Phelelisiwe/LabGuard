@@ -1,4 +1,4 @@
-﻿html {
+html {
   scroll-behavior: smooth;
 }
 
@@ -652,7 +652,7 @@
 }
 
 .landing-page .feature-card li::before {
-  content: "âœ“";
+  content: "✓";
   color: #218838;
   font-weight: bold;
   margin-right: 8px;

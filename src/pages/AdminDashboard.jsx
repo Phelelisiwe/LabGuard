@@ -20,14 +20,6 @@ const functions = [
     path: "/admin/register-employee",
   },
   {
-    short: "BIO",
-    title: "Biometric Registration",
-    description:
-      "Manage face and fingerprint registration for eligible laboratory users.",
-    action: "Manage biometrics",
-    path: "/admin/biometric",
-  },
-  {
     short: "AL",
     title: "Lecturer Assignment",
     description:
@@ -76,7 +68,7 @@ function AdminDashboard() {
   const attendanceTrend = [68, 77, 70, 84, 92, 88, 96];
   const operations = [
     { name: "Students", value: 86, color: "blue" },
-    { name: "Biometric checks", value: 74, color: "gold" },
+    { name: "Access checks", value: 74, color: "gold" },
     { name: "Module activity", value: 91, color: "green" },
     { name: "Access alerts", value: 62, color: "red" },
   ];
@@ -121,9 +113,9 @@ function AdminDashboard() {
           <div className="lg-welcome-text">
             <h2>Welcome to LabGuard Administration</h2>
             <p>
-              LabGuard helps manage laboratory users, biometric
-              registration, module assignments and secure attendance.
-              Use the shortcuts below to access available features.
+              LabGuard helps manage laboratory users, module assignments,
+              access control and secure attendance. Use the shortcuts below
+              to access available features.
             </p>
           </div>
         </div>
@@ -207,8 +199,8 @@ function AdminDashboard() {
             <span className="lg-function-icon">ATT</span>
             <h3>Attendance Management</h3>
             <p>
-              Support biometric attendance verification and student
-              attendance tracking for registered modules.
+              Support secure attendance tracking for registered modules
+              using the LabGuard verification workflow.
             </p>
             <span className="lg-function-note">
               Uses the attendance workflow configured in LabGuard.
@@ -220,7 +212,7 @@ function AdminDashboard() {
             <h3>Access Control</h3>
             <p>
               Support secure laboratory access through registered
-              users and enabled biometric verification.
+              users and verified phone-based checks.
             </p>
             <span className="lg-function-note">
               Access depends on registration and verification.
@@ -233,7 +225,7 @@ function AdminDashboard() {
           <p>
             <strong>Security reminder:</strong> Verify user details
             before making account changes. Only authorised administrators
-            should manage biometric registrations or delete accounts.
+            should manage user accounts and continue the attendance workflow.
           </p>
         </div>
       </section>

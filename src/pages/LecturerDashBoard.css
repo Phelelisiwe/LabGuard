@@ -1168,3 +1168,86 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+.lecturer-route-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.lecturer-layout-logout {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lecturer-layout-logout:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lecturer-route-content > .dashboard,
+.lecturer-route-content > .overall-page,
+.lecturer-route-content > .modern-modules-page {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 700px) {
+  .lecturer-dashboard {
+    flex-direction: column;
+  }
+
+  .lecturer-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    align-self: stretch;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: 45vh;
+    padding: 12px 14px;
+  }
+
+  .lecturer-logo {
+    padding: 0 4px 10px;
+  }
+
+  .lecturer-sidebar-nav {
+    flex-direction: row;
+    gap: 6px;
+    margin-top: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .lecturer-nav-item {
+    flex: 0 0 auto;
+    min-height: 40px;
+    gap: 7px;
+    padding: 7px 9px;
+    white-space: nowrap;
+  }
+
+  .lecturer-nav-item > span {
+    flex-basis: 24px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .lecturer-sidebar-bottom {
+    display: none;
+  }
+
+  .lecturer-main {
+    width: 100%;
+    max-width: none;
+  }
+}

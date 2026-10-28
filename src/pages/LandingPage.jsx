@@ -464,10 +464,10 @@ function LandingPage() {
               <div className="lg-card-number">02</div>
 
               <div>
-                <h3>Biometric Verification</h3>
+                <h3>Phone Fingerprint Access</h3>
 
                 <p>
-                  Verify laboratory access using face or fingerprint.
+                  Verify laboratory access using your phone fingerprint and location checks.
                 </p>
               </div>
             </div>
@@ -566,7 +566,7 @@ function LandingPage() {
               <h3>Verify</h3>
 
               <p>
-                Complete your biometric verification.
+                Confirm your phone fingerprint or GPS location check.
               </p>
             </div>
 
@@ -666,11 +666,11 @@ function LandingPage() {
                 <span>✓</span>
 
                 <div>
-                  <h3>Biometric Verification</h3>
+                  <h3>Phone Fingerprint Verification</h3>
 
                   <p>
-                    Face or fingerprint verification provides
-                    an additional layer of access control.
+                    Secure fingerprint verification and location checks
+                    help confirm attendance and access.
                   </p>
                 </div>
               </div>

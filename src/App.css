@@ -5,6 +5,7 @@
 :root {
   --tut-navy: #041832;
   --tut-blue: #003b70;
+  --tut-blue-bright: #0a5ea8;
   --tut-gold: #f2b705;
   --tut-gold-hover: #d9a304;
   --bg-glass: rgba(255, 255, 255, 0.95);
@@ -14,6 +15,33 @@
   --border-subtle: rgba(242, 183, 5, 0.25);
   --shadow-elevated: 0 16px 40px rgba(4, 24, 52, 0.18);
   --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  background: #f4f7fb;
+  color: var(--text-main);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+body {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 .lecturer-dashboard {
@@ -31,6 +59,308 @@
   background-attachment: fixed;
   color: white;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------- SHARED PAGE ALIGNMENT ---------- */
+
+.login-page,
+.registration-page {
+  min-height: calc(100vh - 100px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(242, 183, 5, 0.18), transparent 25%),
+    radial-gradient(circle at bottom right, rgba(10, 94, 168, 0.22), transparent 25%),
+    linear-gradient(135deg, #031a35 0%, #003b70 45%, #061e3a 100%);
+}
+
+.login-container,
+.registration-card {
+  width: min(520px, 100%);
+}
+
+.login-card,
+.registration-card {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(242, 183, 5, 0.26);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(4, 24, 52, 0.25);
+}
+
+.login-header {
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.login-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  letter-spacing: -0.06em;
+  color: #fff;
+}
+
+.login-header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.login-card {
+  padding: 34px 30px 28px;
+}
+
+.login-card h2,
+.registration-card h1 {
+  margin: 0 0 10px;
+  color: var(--tut-navy);
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  letter-spacing: -0.04em;
+}
+
+.login-description,
+.registration-description {
+  margin: 0 0 26px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  font-size: 0.98rem;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--tut-navy);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-group input,
+.form-group select,
+.registration-card select,
+.delete-form input,
+.delete-form select {
+  width: 100%;
+  border: 1px solid rgba(4, 24, 52, 0.12);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: var(--text-main);
+  padding: 14px 16px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.registration-card select:focus,
+.delete-form input:focus,
+.delete-form select:focus {
+  outline: none;
+  border-color: var(--tut-blue);
+  box-shadow: 0 0 0 4px rgba(0, 59, 112, 0.08);
+}
+
+.login-button,
+.register-button,
+.delete-button,
+.modern-student-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--tut-gold) 0%, #ffca2a 100%);
+  color: var(--tut-navy);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.login-button,
+.register-button {
+  width: 100%;
+  padding: 15px 18px;
+  margin-top: 6px;
+  font-size: 1rem;
+}
+
+.login-button:hover,
+.register-button:hover,
+.delete-button:hover,
+.modern-student-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(242, 183, 5, 0.22);
+  filter: saturate(1.05);
+}
+
+.back-button,
+.back-dashboard-button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 59, 112, 0.06);
+  color: var(--tut-blue);
+  font-weight: 700;
+}
+
+.otp-message {
+  padding: 16px 18px;
+  border: 1px solid rgba(0, 59, 112, 0.1);
+  border-radius: 12px;
+  background: #f5f9ff;
+  color: var(--text-main);
+  margin-bottom: 20px;
+}
+
+.otp-message p,
+.otp-message strong {
+  margin: 0;
+  color: var(--tut-navy);
+}
+
+.error-message,
+.success-message {
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.error-message {
+  background: rgba(200, 16, 46, 0.08);
+  border: 1px solid rgba(200, 16, 46, 0.18);
+  color: #a30d25;
+}
+
+.success-message {
+  background: rgba(11, 148, 83, 0.08);
+  border: 1px solid rgba(11, 148, 83, 0.18);
+  color: #156d42;
+}
+
+.admin-shell {
+  background: #f3f7fb;
+}
+
+.admin-topbar {
+  background: linear-gradient(135deg, #041832 0%, #003b70 100%);
+  border-bottom: 4px solid var(--tut-gold);
+  box-shadow: 0 10px 24px rgba(4, 24, 52, 0.14);
+}
+
+.admin-brand-mark {
+  background: linear-gradient(135deg, var(--tut-gold), #ffca2a);
+  color: var(--tut-navy);
+  box-shadow: 0 8px 18px rgba(242, 183, 5, 0.2);
+}
+
+.admin-role {
+  color: #e8f2ff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-sidebar {
+  background: linear-gradient(180deg, #09294b 0%, #071f3b 100%);
+  border-right: 1px solid rgba(242, 183, 5, 0.14);
+}
+
+.admin-nav-link {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.admin-nav-link:hover {
+  transform: translateX(2px);
+  border-color: rgba(242, 183, 5, 0.18);
+}
+
+.admin-nav-link.active {
+  background: linear-gradient(135deg, rgba(0, 59, 112, 0.88), rgba(10, 94, 168, 0.8));
+  border-color: rgba(242, 183, 5, 0.35);
+  box-shadow: inset 3px 0 0 var(--tut-gold);
+}
+
+.admin-sidebar-footer {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modern-student-dashboard {
+  background:
+    radial-gradient(circle at top left, rgba(0, 91, 172, 0.12), transparent 25%),
+    radial-gradient(circle at bottom right, rgba(242, 183, 5, 0.1), transparent 30%),
+    #f5f8fc;
+}
+
+.modern-student-nav {
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid rgba(4, 24, 52, 0.08);
+  box-shadow: 0 10px 28px rgba(4, 24, 52, 0.05);
+}
+
+.modern-student-logo {
+  background: linear-gradient(135deg, var(--tut-blue), var(--tut-blue-bright));
+}
+
+.modern-student-primary {
+  min-width: 185px;
+  padding: 14px 18px;
+  font-size: 0.8rem;
+}
+
+.student-chart-card,
+.student-progress-card,
+.student-metric-card,
+.modern-student-tool {
+  border: 1px solid rgba(4, 24, 52, 0.08);
+  box-shadow: 0 16px 32px rgba(15, 39, 67, 0.06);
+}
+
+.modern-student-tool {
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border-radius: 18px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.modern-student-tool:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 36px rgba(15, 39, 67, 0.08);
+  border-color: rgba(242, 183, 5, 0.24);
+}
+
+.modern-student-workflow-step,
+.modern-student-status {
+  border: 1px solid rgba(4, 24, 52, 0.06);
+}
+
+.lecturer-dashboard {
+  background:
+    linear-gradient(135deg, rgba(4, 24, 52, 0.96), rgba(0, 59, 112, 0.9)),
+    url("https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=2000&q=85") center/cover no-repeat;
+}
+
+.lecturer-sidebar,
+.lecturer-topbar {
+  box-shadow: 0 12px 28px rgba(4, 24, 52, 0.18);
+}
+
+.lecturer-nav-item.active,
+.lecturer-nav-item:hover {
+  background: rgba(242, 183, 5, 0.12);
+  color: #fff;
 }
 
 /* ---------- SIDEBAR (MODERN GLASS) ---------- */

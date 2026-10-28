@@ -2,6 +2,15 @@ import { useNavigate } from "react-router-dom";
 
 function UpdateInformation() {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role");
+  const changePasswordPath =
+    role === "student"
+      ? "/student/change-password"
+      : role === "lecturer"
+        ? "/lecturer/change-password"
+        : role === "super_admin"
+          ? "/admin/change-password"
+          : "/change-password";
 
   return (
     <div className="modern-update-page">
@@ -129,7 +138,7 @@ function UpdateInformation() {
 
             <button
               className="modern-update-action"
-              onClick={() => navigate("/change-password")}
+              onClick={() => navigate(changePasswordPath)}
             >
               <span>Change Password</span>
               <span className="modern-update-arrow">→</span>
