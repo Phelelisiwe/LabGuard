@@ -18,14 +18,9 @@ function LecturerDashboard() {
   const [attendanceStarting, setAttendanceStarting] = useState(false);
   const [scheduledClasses, setScheduledClasses] = useState([]);
   const [attendanceMessage, setAttendanceMessage] = useState("");
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const stored = localStorage.getItem("lecturer_notifications");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [notifications, setNotifications] = useState([]);
+  const [notificationSending, setNotificationSending] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
   const [noticeForm, setNoticeForm] = useState({
     type: "cancelled",
     title: "",
@@ -141,9 +136,24 @@ console.log("NUMBER OF MODULES:", response.data?.length);
       setError("");
       setAttendanceMessage("");
 
+      if (!navigator.geolocation) {
+        throw new Error("Location services are not supported by this browser.");
+      }
+
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      });
+
       const response = await axios.post(
         `${API_URL}/attendance-session/start`,
-        null,
+        {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        },
         {
           headers: { Authorization: `Bearer ${token}` },
           params: timetableId ? { timetable_id: timetableId } : undefined,
@@ -173,6 +183,7 @@ console.log("NUMBER OF MODULES:", response.data?.length);
 
       setError(
         err.response?.data?.detail ||
+          err.message ||
           "Unable to start attendance. Check your timetable and try again."
       );
     } finally {
@@ -190,8 +201,40 @@ console.log("NUMBER OF MODULES:", response.data?.length);
   const lecturerInitial = lecturerEmail.charAt(0).toUpperCase();
 
   useEffect(() => {
-    localStorage.setItem("lecturer_notifications", JSON.stringify(notifications));
-  }, [notifications]);
+    let active = true;
+
+    const loadNotifications = async () => {
+      if (!token || !selectedModuleId) {
+        setNotifications([]);
+        return;
+      }
+
+      try {
+        const response = await axios.get(
+          `${API_URL}/lecturer/modules/${selectedModuleId}/notifications`,
+          { headers: { Authorization: "Bearer " + token } }
+        );
+        if (active) setNotifications(response.data);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+          return;
+        }
+        if (active) {
+          setError(
+            err.response?.data?.detail ||
+              "Unable to load notifications for this module."
+          );
+        }
+      }
+    };
+
+    loadNotifications();
+    return () => {
+      active = false;
+    };
+  }, [navigate, selectedModuleId, token]);
 
   const handleNoticeChange = (event) => {
     const { name, value } = event.target;
@@ -201,8 +244,10 @@ console.log("NUMBER OF MODULES:", response.data?.length);
     }));
   };
 
-  const handleSendNotification = (event) => {
+  const handleSendNotification = async (event) => {
     event.preventDefault();
+    setNotificationMessage("");
+    setError("");
 
     if (!selectedModuleId) {
       setError("Select a module before sending a class alert.");
@@ -217,19 +262,41 @@ console.log("NUMBER OF MODULES:", response.data?.length);
       return;
     }
 
-    const newNotification = {
-      id: Date.now(),
-      moduleId: selectedModuleId,
-      type: noticeForm.type,
-      title: trimmedTitle,
-      message: trimmedMessage,
-      createdAt: new Date().toISOString(),
-      moduleCode: selectedModule?.module_code || "Module",
-    };
+    try {
+      setNotificationSending(true);
+      const response = await axios.post(
+        `${API_URL}/lecturer/modules/${selectedModuleId}/notifications`,
+        {
+          type: noticeForm.type,
+          title: trimmedTitle,
+          message: trimmedMessage,
+        },
+        { headers: { Authorization: "Bearer " + token } }
+      );
 
-    setNotifications((previous) => [newNotification, ...previous].slice(0, 8));
-    setNoticeForm({ type: "cancelled", title: "", message: "" });
-    setError("");
+      setNotifications((previous) =>
+        [response.data.notification, ...previous].slice(0, 20)
+      );
+      setNoticeForm({ type: "cancelled", title: "", message: "" });
+
+      const { sent, total, failed } = response.data.email_delivery;
+      setNotificationMessage(
+        failed
+          ? `Alert added to the student app. Email delivered to ${sent} of ${total} students.`
+          : `Alert sent to ${sent} students by email and added to the student app.`
+      );
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.clear();
+        navigate("/login");
+        return;
+      }
+      setError(
+        err.response?.data?.detail || "Unable to send the student notification."
+      );
+    } finally {
+      setNotificationSending(false);
+    }
   };
 
   const notificationSummary = notifications.length
@@ -619,15 +686,28 @@ console.log("NUMBER OF MODULES:", response.data?.length);
                 />
               </div>
 
-              <button type="submit" className="lecturer-primary-button" disabled={!selectedModuleId}>
-                Send notification
+              <button
+                type="submit"
+                className="lecturer-primary-button"
+                disabled={!selectedModuleId || notificationSending}
+              >
+                {notificationSending ? "Sending..." : "Send notification"}
               </button>
+              {notificationMessage && (
+                <p className="lecturer-notification-feedback" role="status">
+                  {notificationMessage}
+                </p>
+              )}
             </form>
 
             <div className="lecturer-notification-list">
               <h3>Recent alerts</h3>
 
-              {notifications.length === 0 ? (
+              {!selectedModuleId ? (
+                <div className="lecturer-notice-empty">
+                  Select a module to view its recent alerts.
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="lecturer-notice-empty">
                   No student alerts sent yet.
                 </div>
@@ -639,11 +719,11 @@ console.log("NUMBER OF MODULES:", response.data?.length);
                     </div>
                     <div className="lecturer-notice-copy">
                       <strong>{item.title}</strong>
-                      <span>{item.moduleCode}</span>
+                      <span>{item.module_code}</span>
                       <p>{item.message}</p>
                     </div>
                     <small>
-                      {new Date(item.createdAt).toLocaleString([], {
+                      {new Date(item.created_at).toLocaleString([], {
                         month: "short",
                         day: "numeric",
                         hour: "2-digit",

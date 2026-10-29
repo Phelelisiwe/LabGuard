@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { startAuthentication } from "@simplewebauthn/browser";
+import "./StudentCheckIn.css";
 
 function StudentCheckIn() {
   const navigate = useNavigate();
@@ -29,9 +31,10 @@ function StudentCheckIn() {
     setActiveClass(null);
 
     try {
-      const response = await axios.get(`${API_URL}/attendance-session/current`, {
-        headers: authHeaders,
-      });
+      const response = await axios.get(
+        `${API_URL}/attendance-session/student/current`,
+        { headers: authHeaders }
+      );
 
       const data = response.data;
 
@@ -64,6 +67,57 @@ function StudentCheckIn() {
     } catch (err) {
       console.error("Load attendance error:", err);
       setError("Could not load attendance records.");
+    }
+  };
+
+  const handleFingerprintCheckIn = async () => {
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      if (!activeClass) {
+        throw new Error("There is no active class to check in to.");
+      }
+      if (!navigator.geolocation) {
+        throw new Error("Location services are not supported by this browser.");
+      }
+
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      });
+
+      const optionsResponse = await axios.get(
+        `${API_URL}/biometric/attendance/fingerprint/options`,
+        { headers: authHeaders }
+      );
+      const credential = await startAuthentication({
+        optionsJSON: optionsResponse.data,
+      });
+      const response = await axios.post(
+        `${API_URL}/biometric/attendance/fingerprint/verify`,
+        {
+          credential,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        },
+        { headers: authHeaders }
+      );
+
+      setMessage(response.data.message || "Fingerprint attendance recorded.");
+      await Promise.all([loadActiveClass(), fetchAttendance()]);
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+          err.message ||
+          "Unable to verify your fingerprint attendance."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,13 +189,23 @@ function StudentCheckIn() {
           <div className="attendance-form">
             <div className="biometric-checkin-info">
               <p>
-                <strong>Circuit fingerprint attendance</strong>
+                <strong>Phone fingerprint attendance</strong>
               </p>
               <span>
-                Use the LabGuard fingerprint circuit scanner for attendance. The first scan records check-in,
-                and the second scan on the same session records checkout.
+                Use your phone's fingerprint prompt while within 50 metres of
+                the lecturer's saved class location. The first verification
+                records check-in and the next records check-out.
               </span>
             </div>
+
+            <button
+              type="button"
+              className="fingerprint-checkin-button"
+              onClick={handleFingerprintCheckIn}
+              disabled={loading || checkingClass || !activeClass}
+            >
+              {loading ? "Verifying..." : "Take attendance with fingerprint"}
+            </button>
 
             <button
               type="button"
@@ -183,7 +247,7 @@ function StudentCheckIn() {
               <tbody>
                 {attendance.length > 0 ? (
                   attendance.map((record) => (
-                    <tr key={record.id}>
+                    <tr key={record.attendance_id}>
                       <td>
                         <strong>{record.module_code || record.module_name || "Module"}</strong>
                       </td>

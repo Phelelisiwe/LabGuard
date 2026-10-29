@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import "./UpdateInformation.css";
 
 function UpdateInformation() {
   const navigate = useNavigate();

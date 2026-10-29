@@ -28,6 +28,7 @@ from app.models.biometric import StudentBiometric
 from app.models.timetable import Timetable
 
 from app.models.attendance_session import AttendanceSession
+from app.models.notification import ClassNotification
 
 
 # =========================================================

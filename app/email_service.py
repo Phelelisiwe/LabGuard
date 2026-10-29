@@ -163,3 +163,34 @@ LabGuard System
         "Your LabGuard Account Details",
         text_content,
     )
+
+
+def send_class_notification_email(
+    receiver_email: str,
+    module_code: str,
+    notification_type: str,
+    title: str,
+    message: str,
+):
+    notice_type = (
+        "Class cancelled"
+        if notification_type == "cancelled"
+        else "Lecturer running late"
+    )
+    text_content = f"""Hello,
+
+There is an update for {module_code}.
+
+{notice_type}: {title}
+
+{message}
+
+Regards,
+LabGuard
+"""
+
+    _send_email(
+        receiver_email,
+        f"{module_code}: {title}",
+        text_content,
+    )

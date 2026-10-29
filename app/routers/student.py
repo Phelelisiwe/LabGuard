@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.student import Student
 from app.models.attendance import StudentModule, Attendance, Module
+from app.models.notification import ClassNotification
 from app.dependencies import require_role
 
 
@@ -139,4 +140,34 @@ def get_my_attendance(
             "present": True
         }
         for record in records
+    ]
+
+
+@router.get("/notifications")
+def get_my_notifications(
+    current_user=Depends(require_role("student")),
+    db: Session = Depends(get_db),
+):
+    notifications = (
+        db.query(ClassNotification, Module)
+        .join(Module, Module.id == ClassNotification.module_id)
+        .join(StudentModule, StudentModule.module_id == Module.id)
+        .filter(StudentModule.student_id == current_user["user_id"])
+        .distinct()
+        .order_by(ClassNotification.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    return [
+        {
+            "id": notification.id,
+            "module_id": notification.module_id,
+            "module_code": module.module_code,
+            "type": notification.type,
+            "title": notification.title,
+            "message": notification.message,
+            "created_at": notification.created_at.isoformat(),
+        }
+        for notification, module in notifications
     ]

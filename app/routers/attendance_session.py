@@ -1,5 +1,4 @@
 from datetime import datetime
-import math
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -11,6 +10,7 @@ from app.dependencies import require_role
 from app.models.timetable import Timetable
 from app.models.attendance_session import AttendanceSession
 from app.models.attendance import Module, StudentModule, Attendance
+from app.location import calculate_distance_metres
 
 
 router = APIRouter(
@@ -19,12 +19,18 @@ router = APIRouter(
 )
 
 
+class StartAttendanceSessionPayload(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 # =========================================================
 # START ATTENDANCE SESSION - LECTURER
 # =========================================================
 
 @router.post("/start")
 def start_attendance_session(
+    payload: StartAttendanceSessionPayload,
     timetable_id: int | None = None,
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db),
@@ -87,6 +93,11 @@ def start_attendance_session(
     ).first()
 
     if existing:
+        if existing.latitude is None or existing.longitude is None:
+            existing.latitude = payload.latitude
+            existing.longitude = payload.longitude
+            db.commit()
+
         module = db.query(Module).filter(
             Module.id == existing.module_id
         ).first()
@@ -100,6 +111,10 @@ def start_attendance_session(
             "module_name": module.module_name if module else None,
             "laboratory": existing.laboratory,
             "opened_at": str(existing.opened_at),
+            "location_saved": (
+                existing.latitude is not None
+                and existing.longitude is not None
+            ),
         }
 
     session = AttendanceSession(
@@ -107,6 +122,8 @@ def start_attendance_session(
         lecturer_id=lecturer_id,
         module_id=timetable.module_id,
         laboratory=timetable.laboratory,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
         session_date=today,
         opened_at=now,
         status="active",
@@ -130,6 +147,7 @@ def start_attendance_session(
         "laboratory": session.laboratory,
         "opened_at": str(session.opened_at),
         "status": session.status,
+        "location_saved": True,
     }
 
 
@@ -282,34 +300,6 @@ def student_current_attendance_session(
 class GPSCheckInPayload(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-
-
-def calculate_distance_metres(
-    lat1: float,
-    lon1: float,
-    lat2: float,
-    lon2: float,
-) -> float:
-    """Calculate the distance between two GPS coordinates."""
-    earth_radius = 6_371_000
-
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-
-    delta_lat = math.radians(lat2 - lat1)
-    delta_lon = math.radians(lon2 - lon1)
-
-    a = (
-        math.sin(delta_lat / 2) ** 2
-        + math.cos(lat1_rad)
-        * math.cos(lat2_rad)
-        * math.sin(delta_lon / 2) ** 2
-    )
-
-    return earth_radius * 2 * math.atan2(
-        math.sqrt(a),
-        math.sqrt(max(0.0, 1.0 - a)),
-    )
 
 
 # =========================================================

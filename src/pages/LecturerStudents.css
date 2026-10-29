@@ -19,7 +19,9 @@
   min-height: 100vh;
   box-sizing: border-box;
   padding: 32px clamp(16px, 4vw, 52px);
-  background: var(--ls-background);
+  background:
+    radial-gradient(circle at 88% 0, rgba(242, 183, 5, 0.08), transparent 25%),
+    var(--ls-background);
   color: var(--ls-text);
   font-family: Arial, Helvetica, sans-serif;
   overflow-x: hidden;
@@ -145,7 +147,13 @@
   border-top: 5px solid var(--ls-yellow);
   border-radius: 15px;
   background: #fff;
-  box-shadow: 0 6px 22px rgba(7, 29, 58, 0.05);
+  box-shadow: 0 10px 28px rgba(7, 29, 58, 0.07);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.lecturer-students-page .ls-module-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(7, 29, 58, 0.1);
 }
 
 .lecturer-students-page .ls-module-icon {

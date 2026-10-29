@@ -801,6 +801,17 @@
   cursor: not-allowed;
 }
 
+.lecturer-notification-feedback {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #cfe9db;
+  border-radius: 9px;
+  background: #eaf8f0;
+  color: #247747;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .lecturer-notification-list {
   display: flex;
   flex-direction: column;

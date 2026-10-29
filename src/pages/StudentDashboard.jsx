@@ -1,11 +1,56 @@
 
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import "./StudentNotifications.css";
 
 function StudentDashboard() {
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationError, setNotificationError] = useState("");
+  const token = localStorage.getItem("access_token");
+  const API_URL =
+    import.meta.env.VITE_API_URL || "https://labguard-dklp.onrender.com";
 
   const email = localStorage.getItem("email") || "Student";
   const initials = email.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    let active = true;
+
+    const loadNotifications = async () => {
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_URL}/student/notifications`, {
+          headers: { Authorization: "Bearer " + token },
+        });
+        if (active) setNotifications(response.data);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+          return;
+        }
+        if (active) {
+          setNotificationError(
+            err.response?.data?.detail || "Unable to load class notifications."
+          );
+        }
+      } finally {
+        if (active) setNotificationsLoading(false);
+      }
+    };
+
+    loadNotifications();
+    return () => {
+      active = false;
+    };
+  }, [API_URL, navigate, token]);
 
   const attendanceTrend = [72, 84, 76, 91, 88, 96, 94];
   const moduleProgress = [
@@ -125,6 +170,55 @@ function StudentDashboard() {
             </span>
           </button>
 
+        </section>
+
+        <section className="student-notifications" aria-labelledby="student-notifications-title">
+          <div className="student-notifications-heading">
+            <div>
+              <span>MODULE UPDATES</span>
+              <h2 id="student-notifications-title">Class notifications</h2>
+            </div>
+            <span className="student-notifications-count">
+              {notifications.length} recent
+            </span>
+          </div>
+
+          {notificationError ? (
+            <p className="student-notifications-state" role="alert">
+              {notificationError}
+            </p>
+          ) : notificationsLoading ? (
+            <p className="student-notifications-state" aria-live="polite">
+              Loading class notifications...
+            </p>
+          ) : notifications.length === 0 ? (
+            <p className="student-notifications-state">
+              Class updates from your lecturers will appear here.
+            </p>
+          ) : (
+            <div className="student-notifications-list">
+              {notifications.slice(0, 5).map((notification) => (
+                <article
+                  className="student-notification-item"
+                  key={notification.id}
+                >
+                  <div className="student-notification-meta">
+                    <span>{notification.module_code}</span>
+                    <time dateTime={notification.created_at}>
+                      {new Date(notification.created_at).toLocaleString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                  <h3>{notification.title}</h3>
+                  <p>{notification.message}</p>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
 

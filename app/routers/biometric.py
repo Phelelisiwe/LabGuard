@@ -8,6 +8,7 @@ from hmac import compare_digest
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -19,6 +20,7 @@ from app.models.attendance_session import AttendanceSession
 from app.models.timetable import Timetable
 from app.schemas.biometric import FaceRegistration, FingerprintRegistration
 from app.dependencies import require_role
+from app.location import calculate_distance_metres
 
 from webauthn import (
     generate_registration_options,
@@ -510,6 +512,12 @@ def get_biometric_status(
 # STUDENT WEBAUTHN FINGERPRINT ATTENDANCE
 # =========================================================
 
+class FingerprintAttendancePayload(BaseModel):
+    credential: dict
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 @router.get("/attendance/fingerprint/options")
 def generate_fingerprint_attendance_options(
     request: Request,
@@ -570,12 +578,36 @@ def generate_fingerprint_attendance_options(
 
 @router.post("/attendance/fingerprint/verify")
 def verify_fingerprint_attendance(
-    credential: dict,
+    payload: FingerprintAttendancePayload,
     current_user=Depends(require_role("student")),
     db: Session = Depends(get_db),
 ):
+    credential = payload.credential
     student_id = current_user["user_id"]
     session = get_active_attendance_session(student_id, db)
+
+    if session.latitude is None or session.longitude is None:
+        raise HTTPException(
+            status_code=400,
+            detail="The lecturer has not saved the class location.",
+        )
+
+    distance = calculate_distance_metres(
+        session.latitude,
+        session.longitude,
+        payload.latitude,
+        payload.longitude,
+    )
+    allowed_distance = 50
+    if distance > allowed_distance:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"You are approximately {round(distance)} metres from the "
+                f"class location. You must be within {allowed_distance} "
+                "metres to check in."
+            ),
+        )
 
     biometric = db.query(StudentBiometric).filter(
         StudentBiometric.student_id == student_id

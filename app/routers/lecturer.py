@@ -10,6 +10,9 @@ from app.database import get_db
 from app.dependencies import require_role
 from app.models.attendance import Module, StudentModule, Attendance
 from app.models.student import Student
+from app.models.notification import ClassNotification
+from app.schemas.notification import ClassNotificationCreate
+from app.email_service import send_class_notification_email
 
 
 router = APIRouter(
@@ -194,6 +197,122 @@ def download_module_students(
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+def serialize_notification(notification, module_code: str):
+    return {
+        "id": notification.id,
+        "module_id": notification.module_id,
+        "module_code": module_code,
+        "type": notification.type,
+        "title": notification.title,
+        "message": notification.message,
+        "created_at": notification.created_at.isoformat(),
+    }
+
+
+@router.get("/modules/{module_id}/notifications")
+def get_module_notifications(
+    module_id: int,
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
+    notifications = (
+        db.query(ClassNotification)
+        .filter(ClassNotification.module_id == module.id)
+        .order_by(ClassNotification.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    return [
+        serialize_notification(notification, module.module_code)
+        for notification in notifications
+    ]
+
+
+@router.post("/modules/{module_id}/notifications")
+def create_module_notification(
+    module_id: int,
+    payload: ClassNotificationCreate,
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    title = payload.title.strip()
+    message = payload.message.strip()
+    if not title or not message:
+        raise HTTPException(
+            status_code=422,
+            detail="Notification title and message cannot be blank.",
+        )
+
+    lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
+    students = (
+        db.query(Student)
+        .join(StudentModule, StudentModule.student_id == Student.id)
+        .filter(StudentModule.module_id == module.id)
+        .order_by(Student.student_number)
+        .all()
+    )
+
+    if not students:
+        raise HTTPException(
+            status_code=400,
+            detail="There are no students registered for this module.",
+        )
+
+    notification = ClassNotification(
+        module_id=module.id,
+        lecturer_id=lecturer_id,
+        type=payload.type,
+        title=title,
+        message=message,
+    )
+
+    try:
+        db.add(notification)
+        db.commit()
+        db.refresh(notification)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the student notification.",
+        )
+
+    email_sent = 0
+    email_failed = 0
+    for student in students:
+        if not student.email:
+            email_failed += 1
+            continue
+
+        try:
+            send_class_notification_email(
+                student.email,
+                module.module_code,
+                payload.type,
+                notification.title,
+                notification.message,
+            )
+            email_sent += 1
+        except (RuntimeError, ValueError):
+            email_failed += 1
+
+    return {
+        "notification": serialize_notification(
+            notification,
+            module.module_code,
+        ),
+        "email_delivery": {
+            "total": len(students),
+            "sent": email_sent,
+            "failed": email_failed,
+        },
+    }
 
 
 # ============================================================
