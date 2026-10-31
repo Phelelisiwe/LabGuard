@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+
 from app.database import get_db
 from app.models.student import Student
 from app.models.employee import Employee
