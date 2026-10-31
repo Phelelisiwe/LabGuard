@@ -15,7 +15,7 @@ from app.database import get_db
 from app.models.student import Student
 from app.models.employee import Employee
 from app.models.biometric import StudentBiometric
-from app.models.attendance import Attendance, StudentModule
+from app.models.attendance import Attendance, StudentModule, Module
 from app.models.attendance_session import AttendanceSession
 from app.models.timetable import Timetable
 from app.schemas.biometric import FaceRegistration, FingerprintRegistration
