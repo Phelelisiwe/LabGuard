@@ -1523,6 +1523,43 @@ def start_lecturer_session_from_sensor(
     current_time = now.time()
     day = now.strftime("%A")
 
+    # =========================================================
+    # SECOND SCAN: If an active session already exists, close it!
+    # =========================================================
+    existing = db.query(AttendanceSession).filter(
+        AttendanceSession.lecturer_id == employee.id,
+        AttendanceSession.session_date == today,
+        AttendanceSession.status == "active",
+    ).first()
+
+    if existing:
+        existing.closed_at = now
+        existing.status = "closed"
+        try:
+            db.commit()
+            db.refresh(existing)
+        except Exception:
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="Could not close the lecturer's attendance session.",
+            )
+
+        return {
+            "success": True,
+            "verified": True,
+            "authorized": True,
+            "door_action": "unlock",
+            "action": "session_closed",
+            "session_id": existing.id,
+            "module_id": existing.module_id,
+            "laboratory": existing.laboratory,
+            "message": "Session Ended",
+        }
+
+    # =========================================================
+    # FIRST SCAN: Start a new session if scheduled
+    # =========================================================
     classes = db.query(Timetable).filter(
         Timetable.lecturer_id == employee.id,
         Timetable.day_of_week == day,
@@ -1537,7 +1574,7 @@ def start_lecturer_session_from_sensor(
             "verified": True,
             "authorized": False,
             "door_action": "keep_locked",
-            "message": "No class is scheduled for this lecturer at this time.",
+            "message": "No class now",
         }
 
     if len(classes) > 1:
@@ -1546,29 +1583,14 @@ def start_lecturer_session_from_sensor(
             "verified": True,
             "authorized": False,
             "door_action": "keep_locked",
-            "message": "Multiple timetable entries match. Administrator review is required.",
+            "message": "Multiple classes match",
         }
 
     timetable = classes[0]
 
-    existing = db.query(AttendanceSession).filter(
-        AttendanceSession.lecturer_id == employee.id,
-        AttendanceSession.session_date == today,
-        AttendanceSession.status == "active",
-    ).first()
-
-    if existing:
-        return {
-            "success": True,
-            "verified": True,
-            "authorized": True,
-            "door_action": "unlock",
-            "already_active": True,
-            "session_id": existing.id,
-            "module_id": existing.module_id,
-            "laboratory": existing.laboratory,
-            "message": "Lecturer verified. The class session is already active.",
-        }
+    # Get module code for display name
+    module = db.query(Module).filter(Module.id == timetable.module_id).first()
+    module_code = module.module_code if module else "Class Started"
 
     session = AttendanceSession(
         timetable_id=timetable.id,
@@ -1597,14 +1619,12 @@ def start_lecturer_session_from_sensor(
         "verified": True,
         "authorized": True,
         "door_action": "unlock",
-        "already_active": False,
+        "action": "session_started",
         "session_id": session.id,
         "module_id": session.module_id,
-        "laboratory": session.laboratory,
-        "message": "Lecturer verified. The scheduled class session has started.",
+        "class_name": module_code,
+        "message": "Class Started",
     }
-
-
 # =========================================================
 # PHYSICAL FINGERPRINT ATTENDANCE
 # ESP32 submits a matched sensor slot. The server determines
