@@ -140,7 +140,7 @@ app.include_router(attendance_session_router)
 app.include_router(biometric_router)
 
 app.include_router(forgot_password.router)
-
+app.include_router(biometrics.router)
 
 # =========================================================
 # ROOT
