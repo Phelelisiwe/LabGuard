@@ -26,6 +26,8 @@ from app.models.attendance import (
 from app.models.biometric import StudentBiometric
 
 from app.models.timetable import Timetable
+from app.routers import webauthn
+app.include_router(webauthn.router)
 
 from app.models.attendance_session import AttendanceSession
 from app.models.notification import ClassNotification
