@@ -73,6 +73,8 @@ from app.routers.attendance_session import (
 
 from app.routers import forgot_password
 
+from app.routers import webauthn
+
 
 # =========================================================
 # CREATE DATABASE TABLES
@@ -134,7 +136,7 @@ app.include_router(student_module_router)
 app.include_router(attendance_router)
 
 app.include_router(timetable_router)
-
+app.include_router(webauthn.router)
 app.include_router(attendance_session_router)
 
 app.include_router(biometric_router)
