@@ -885,3 +885,87 @@ def predict_next_attendance(
             "most recent five recorded classes"
         )
     }
+    @router.get("/dashboard/summary")
+def get_lecturer_dashboard_summary(
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    """
+    Aggregated numbers for the lecturer dashboard.
+    Replaces N per-module calls with one.
+    """
+    lecturer_id = current_user["user_id"]
+
+    modules = (
+        db.query(Module)
+        .filter(Module.lecturer_id == lecturer_id)
+        .order_by(Module.module_code)
+        .all()
+    )
+
+    module_summaries = []
+    distinct_student_ids: set[int] = set()
+    total_classes_all = 0
+    total_present_all = 0
+    total_possible_all = 0
+
+    for module in modules:
+        student_ids = [
+            sid
+            for (sid,) in db.query(StudentModule.student_id)
+            .filter(StudentModule.module_id == module.id)
+            .all()
+        ]
+        total_students = len(student_ids)
+        distinct_student_ids.update(student_ids)
+
+        classes_held = (
+            db.query(Attendance.date)
+            .filter(Attendance.module_id == module.id)
+            .distinct()
+            .count()
+        )
+
+        present_records = (
+            db.query(Attendance)
+            .filter(Attendance.module_id == module.id)
+            .count()
+        )
+
+        possible = total_students * classes_held
+        rate = (present_records / possible * 100) if possible > 0 else 0.0
+
+        module_summaries.append({
+            "module_id": module.id,
+            "module_code": module.module_code,
+            "module_name": module.module_name,
+            "level": module.level,
+            "total_students": total_students,
+            "classes_held": classes_held,
+            "overall_attendance_rate": round(rate, 2),
+        })
+
+        total_classes_all += classes_held
+        total_present_all += present_records
+        total_possible_all += possible
+
+    overall_rate = (
+        (total_present_all / total_possible_all * 100)
+        if total_possible_all > 0
+        else 0.0
+    )
+
+    total_notifications_sent = (
+        db.query(ClassNotification)
+        .filter(ClassNotification.lecturer_id == lecturer_id)
+        .count()
+    )
+
+    return {
+        "total_modules": len(modules),
+        "total_distinct_students": len(distinct_student_ids),
+        "total_classes_held": total_classes_all,
+        "overall_attendance_rate": round(overall_rate, 2),
+        "total_notifications_sent": total_notifications_sent,
+        "modules": module_summaries,
+    }
