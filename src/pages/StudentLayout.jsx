@@ -1,18 +1,19 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import "./StudentLayout.css";
-
-const navigation = [
-  { label: "Dashboard", short: "DB", path: "/student", end: true },
-  { label: "My Modules", short: "MD", path: "/student/modules" },
-  { label: "My Attendance", short: "AT", path: "/student/attendance" },
-  { label: "Lab Check-In", short: "IN", path: "/student/check-in" },
-  { label: "My Profile", short: "PR", path: "/student/update-information" },
-  { label: "Change Password", short: "PW", path: "/student/change-password" },
-];
+import "./LecturerDashBoard.css"; // Reusing the same CSS for consistency
 
 function StudentLayout() {
   const navigate = useNavigate();
   const email = localStorage.getItem("email") || "Student";
+  const initials = email.charAt(0).toUpperCase();
+
+  const navigation = [
+    { label: "Dashboard", short: "D", path: "/student", end: true },
+    { label: "My Modules", short: "M", path: "/student/modules" },
+    { label: "Attendance", short: "A", path: "/student/attendance" },
+    { label: "Check In", short: "C", path: "/student/check-in" },
+    { label: "Update Information", short: "U", path: "/student/update-information" },
+    { label: "Change Password", short: "P", path: "/student/change-password" },
+  ];
 
   const handleLogout = () => {
     localStorage.clear();
@@ -20,41 +21,44 @@ function StudentLayout() {
   };
 
   return (
-    <div className="student-workspace">
-      <aside className="student-sidebar">
-        <div className="student-sidebar-brand">
-          <span className="student-sidebar-logo">LG</span>
-          <span>
-            <strong>LabGuard</strong>
-            <small>STUDENT PORTAL</small>
-          </span>
+    <div className="lecturer-dashboard">
+      <aside className="lecturer-sidebar">
+        <div className="lecturer-logo">
+          <span className="lecturer-logo-icon">L</span>
+          <span>LabGuard</span>
         </div>
 
-        <nav className="student-sidebar-nav" aria-label="Student navigation">
+        <nav className="lecturer-sidebar-nav">
           {navigation.map((item) => (
             <NavLink
-              key={item.path}
+              key={item.label}
               to={item.path}
               end={item.end}
               className={({ isActive }) =>
-                `student-sidebar-link${isActive ? " active" : ""}`
+                `lecturer-nav-item${isActive ? " active" : ""}`
               }
             >
-              <span className="student-sidebar-icon">{item.short}</span>
-              <span>{item.label}</span>
+              <span>{item.short}</span>
+              {item.label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="student-sidebar-footer">
-          <span className="student-sidebar-email">{email}</span>
-          <button type="button" onClick={handleLogout}>
+        <div className="lecturer-sidebar-bottom">
+          <div className="lecturer-sidebar-user">
+            <div className="lecturer-avatar">{initials}</div>
+            <div className="lecturer-user-details">
+              <strong>Student</strong>
+              <span>{email}</span>
+            </div>
+          </div>
+          <button type="button" className="lecturer-layout-logout" onClick={handleLogout}>
             Log out
           </button>
         </div>
       </aside>
 
-      <div className="student-workspace-content">
+      <div className="lecturer-route-content">
         <Outlet />
       </div>
     </div>
