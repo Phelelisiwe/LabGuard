@@ -655,96 +655,100 @@ def download_module_attendance(
     module_id: int,
     start_date: date | None = None,
     end_date: date | None = None,
+    student_id: int | None = None,  # NEW: Filter by specific student
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db)
 ):
     """
     Download attendance records for a specific module as CSV.
+    Includes "Absent" students if they did not attend a class.
     """
-
     lecturer_id = current_user["user_id"]
-
-    module = get_lecturer_module(
-        module_id,
-        lecturer_id,
-        db
-    )
+    module = get_lecturer_module(module_id, lecturer_id, db)
 
     if start_date and end_date and start_date > end_date:
-        raise HTTPException(
-            status_code=400,
-            detail="Start date must be on or before end date."
-        )
+        raise HTTPException(status_code=400, detail="Start date must be on or before end date.")
 
-    records_query = (
-        db.query(Attendance, Student)
-        .join(
-            Student,
-            Attendance.student_id == Student.id
-        )
-        .filter(Attendance.module_id == module.id)
+    # 1. Get students (filtered if a specific student is chosen)
+    students_query = (
+        db.query(Student)
+        .join(StudentModule, Student.id == StudentModule.student_id)
+        .filter(StudentModule.module_id == module.id)
     )
+    if student_id:
+        students_query = students_query.filter(Student.id == student_id)
+    
+    students = students_query.order_by(Student.student_number).all()
+    student_ids = [s.id for s in students]
 
+    if not students:
+        raise HTTPException(status_code=404, detail="No students found for this criteria.")
+
+    # 2. Get class dates
+    date_query = db.query(Attendance.date).filter(Attendance.module_id == module.id)
     if start_date:
-        records_query = records_query.filter(Attendance.date >= start_date)
+        date_query = date_query.filter(Attendance.date >= start_date)
     if end_date:
-        records_query = records_query.filter(Attendance.date <= end_date)
+        date_query = date_query.filter(Attendance.date <= end_date)
+    
+    class_dates = [row[0] for row in date_query.distinct().order_by(Attendance.date.asc()).all()]
 
-    records = records_query.order_by(
-        Attendance.date.asc(),
-        Student.student_number.asc()
-    ).all()
+    if not class_dates:
+        raise HTTPException(status_code=404, detail="No attendance records found for this period.")
 
+    # 3. Get all attendance records for these dates and students
+    records = (
+        db.query(Attendance)
+        .filter(
+            Attendance.module_id == module.id,
+            Attendance.date.in_(class_dates),
+            Attendance.student_id.in_(student_ids)
+        )
+        .all()
+    )
+    
+    # Map records for quick lookup: {date: {student_id: record}}
+    records_map = {}
+    for r in records:
+        if r.date not in records_map:
+            records_map[r.date] = {}
+        records_map[r.date][r.student_id] = r
+
+    # 4. Generate CSV
     output = StringIO()
-
     writer = csv.writer(output)
+    writer.writerow(["Module", "Student No.", "Student Name", "Date", "Time In", "Time Out", "Status"])
 
-    writer.writerow([
-        "Module Code",
-        "Module Name",
-        "Student Number",
-        "Student Name",
-        "Date",
-        "Time In",
-        "Time Out",
-        "Status"
-    ])
+    for class_date in class_dates:
+        for student in students:
+            record = records_map.get(class_date, {}).get(student.id)
+            
+            if record:
+                status = "Present"
+                time_in = record.time_in.strftime("%H:%M:%S") if record.time_in else ""
+                time_out = record.time_out.strftime("%H:%M:%S") if record.time_out else ""
+            else:
+                status = "Absent"
+                time_in = ""
+                time_out = ""
 
-    for attendance, student in records:
-
-        writer.writerow([
-            module.module_code,
-            module.module_name,
-            student.student_number,
-            f"{student.first_name} {student.last_name}",
-            attendance.date.isoformat(),
-            (
-                attendance.time_in.isoformat()
-                if attendance.time_in
-                else ""
-            ),
-            (
-                attendance.time_out.isoformat()
-                if attendance.time_out
-                else ""
-            ),
-            "Present"
-        ])
+            writer.writerow([
+                module.module_code,
+                student.student_number,
+                f"{student.first_name} {student.last_name}",
+                class_date.isoformat(),
+                time_in,
+                time_out,
+                status
+            ])
 
     output.seek(0)
-
-    filename = (
-        f"{module.module_code}_attendance.csv"
-    )
+    filename = f"{module.module_code}_attendance.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="{filename}"'
-            )
-        }
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
