@@ -10,13 +10,13 @@ function RegisterBiometrics() {
 
   const [students, setStudents] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
-  const [userType, setUserType] = useState("student"); // 'student' or 'employee'
+  const [userType, setUserType] = useState("student"); 
   
   const [loading, setLoading] = useState(false);
+  const [isPending, setIsPending] = useState(false); 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Fetch list of students/employees to populate the dropdown
   useEffect(() => {
     if (!token) {
       navigate("/login");
@@ -26,8 +26,6 @@ function RegisterBiometrics() {
     const fetchUsers = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        
-        // Fetching students (update these endpoints if your backend differs)
         const res = await axios.get(`${API_URL}/admin/students`, { headers }).catch(() => ({ data: [] }));
         const fetchedStudents = Array.isArray(res.data) ? res.data : res.data.students || [];
         setStudents(fetchedStudents);
@@ -41,32 +39,41 @@ function RegisterBiometrics() {
 
   const handleEnroll = async (e) => {
     e.preventDefault();
-    if (!selectedUser) {
-      setError("Please select a user first.");
-      return;
-    }
+    if (!selectedUser) return;
 
     setLoading(true);
     setError("");
     setMessage("");
 
     try {
-      // Send the request to your backend to tell the FPM10A to expect a scan
-      // Your Python script on the Lab PC will pick this up!
       await axios.post(
-        `${API_URL}/admin/register-fpm10a`, // <-- Make sure this matches your backend endpoint
-        { 
-          user_id: selectedUser,
-          user_type: userType
-        },
+        `${API_URL}/admin/register-fpm10a`, 
+        { user_id: selectedUser, user_type: userType },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setMessage("User selected! Please place their finger on the FPM10A scanner now.");
+      setMessage("Waiting for fingerprint... Please place their finger on the scanner.");
+      setIsPending(true); 
     } catch (err) {
       setError(err.response?.data?.detail || err.message || "Failed to initiate enrollment.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      await axios.post(
+        `${API_URL}/admin/cancel-fpm10a`, 
+        { user_id: selectedUser, user_type: userType },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessage("Enrollment cancelled.");
+      setIsPending(false); 
+      setSelectedUser(""); 
+    } catch (err) {
+      setError("Failed to cancel enrollment.");
     }
   };
 
@@ -91,15 +98,12 @@ function RegisterBiometrics() {
         </div>
 
         <h2 style={{ textAlign: "center", marginBottom: "10px" }}>FPM10A Hardware Enrollment</h2>
-        <p style={{ textAlign: "center", color: "var(--lecturer-muted)", marginBottom: "30px" }}>
-          Select a user below. Once you click "Start Enrollment", the Lab PC's fingerprint scanner will light up. The user should place their thumb on the scanner to complete registration.
-        </p>
-
+        
         <form onSubmit={handleEnroll} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           
           <div className="lecturer-form-row">
             <label>User Type</label>
-            <select value={userType} onChange={(e) => setUserType(e.target.value)}>
+            <select value={userType} onChange={(e) => setUserType(e.target.value)} disabled={isPending}>
               <option value="student">Student</option>
               <option value="employee">Employee</option>
             </select>
@@ -111,6 +115,7 @@ function RegisterBiometrics() {
               value={selectedUser} 
               onChange={(e) => setSelectedUser(e.target.value)}
               required
+              disabled={isPending} 
             >
               <option value="">-- Choose a user --</option>
               {students.map((s) => (
@@ -121,28 +126,29 @@ function RegisterBiometrics() {
             </select>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={loading || !selectedUser}
-            className="lecturer-primary-button"
-            style={{ marginTop: "10px", padding: "16px" }}
-          >
-            {loading ? "Waiting for sensor..." : "Start Enrollment on Scanner"}
-          </button>
+          {!isPending ? (
+            <button 
+              type="submit" 
+              disabled={loading || !selectedUser}
+              className="lecturer-primary-button"
+              style={{ marginTop: "10px", padding: "16px" }}
+            >
+              {loading ? "Starting..." : "Start Enrollment on Scanner"}
+            </button>
+          ) : (
+            <button 
+              type="button" 
+              onClick={handleCancel}
+              className="lecturer-secondary-button"
+              style={{ marginTop: "10px", padding: "16px", color: "#8d1428", borderColor: "#f0c5cb" }}
+            >
+              Cancel Enrollment
+            </button>
+          )}
         </form>
 
-        {message && (
-          <div style={{ marginTop: "20px", padding: "16px", background: "#eaf8f0", color: "#247747", borderRadius: "8px", fontWeight: "bold", textAlign: "center" }}>
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div style={{ marginTop: "20px", padding: "16px", background: "#fff1f2", color: "#8d1428", borderRadius: "8px", fontWeight: "bold", textAlign: "center" }}>
-            {error}
-          </div>
-        )}
-
+        {message && <div style={{ marginTop: "20px", padding: "16px", background: "#eaf8f0", color: "#247747", borderRadius: "8px", fontWeight: "bold", textAlign: "center" }}>{message}</div>}
+        {error && <div style={{ marginTop: "20px", padding: "16px", background: "#fff1f2", color: "#8d1428", borderRadius: "8px", fontWeight: "bold", textAlign: "center" }}>{error}</div>}
       </section>
     </main>
   );
