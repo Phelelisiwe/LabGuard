@@ -4,7 +4,9 @@ import "./LecturerDashBoard.css"; // Reusing the same CSS for consistency
 function StudentLayout() {
   const navigate = useNavigate();
   const email = localStorage.getItem("email") || "Student";
-  const initials = email.charAt(0).toUpperCase();
+  
+  // Safe fallback in case email is somehow missing
+  const initials = email && typeof email === 'string' ? email.charAt(0).toUpperCase() : "S";
 
   const navigation = [
     { label: "Dashboard", short: "D", path: "/student", end: true },
