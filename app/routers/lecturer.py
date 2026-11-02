@@ -490,6 +490,8 @@ def get_module_attendance(
         "total_absent_records": total_absent,
         "sessions": sessions,
     }
+
+
 # ============================================================
 # 4. OVERALL ATTENDANCE FOR A MODULE
 # ============================================================
@@ -885,7 +887,13 @@ def predict_next_attendance(
             "most recent five recorded classes"
         )
     }
-    @router.get("/dashboard/summary")
+
+
+# ============================================================
+# 7. LECTURER DASHBOARD SUMMARY
+# ============================================================
+
+@router.get("/dashboard/summary")
 def get_lecturer_dashboard_summary(
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db),
