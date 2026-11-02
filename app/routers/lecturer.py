@@ -317,6 +317,7 @@ def create_module_notification(
 
 # ============================================================
 # 3. VIEW ALL ATTENDANCE RECORDS FOR A MODULE
+#    (grouped by date, absent students included)
 # ============================================================
 
 @router.get("/modules/{module_id}/attendance")
@@ -328,7 +329,11 @@ def get_module_attendance(
     db: Session = Depends(get_db)
 ):
     """
-    Return all attendance records for a lecturer's module.
+    Return attendance for a lecturer's module, grouped by class date.
+
+    Every registered student appears in every session:
+      - status "Present" if an attendance record exists for that date
+      - status "Absent"  otherwise (time_in/time_out are null)
     """
 
     lecturer_id = current_user["user_id"]
@@ -345,58 +350,146 @@ def get_module_attendance(
             detail="Start date must be on or before end date."
         )
 
-    records_query = (
-        db.query(Attendance, Student)
+    # --------------------------------------------------------
+    # All registered students for this module
+    # --------------------------------------------------------
+
+    students = (
+        db.query(Student)
         .join(
-            Student,
-            Attendance.student_id == Student.id
+            StudentModule,
+            Student.id == StudentModule.student_id
         )
-        .filter(Attendance.module_id == module.id)
+        .filter(StudentModule.module_id == module.id)
+        .order_by(Student.student_number)
+        .all()
     )
 
+    # --------------------------------------------------------
+    # Class dates for this module (date-filtered)
+    # --------------------------------------------------------
+
+    date_query = (
+        db.query(Attendance.date)
+        .filter(Attendance.module_id == module.id)
+    )
+    if start_date:
+        date_query = date_query.filter(Attendance.date >= start_date)
+    if end_date:
+        date_query = date_query.filter(Attendance.date <= end_date)
+
+    class_dates = [
+        row[0]
+        for row in date_query
+        .distinct()
+        .order_by(Attendance.date.desc())
+        .all()
+    ]
+
+    # --------------------------------------------------------
+    # Attendance records for this module (date-filtered)
+    # --------------------------------------------------------
+
+    records_query = (
+        db.query(Attendance)
+        .filter(Attendance.module_id == module.id)
+    )
     if start_date:
         records_query = records_query.filter(Attendance.date >= start_date)
     if end_date:
         records_query = records_query.filter(Attendance.date <= end_date)
 
-    records = records_query.order_by(
-        Attendance.date.desc(),
-        Attendance.time_in.desc()
-    ).all()
+    records = records_query.all()
+
+    # --------------------------------------------------------
+    # Index records: {date: {student_id: record}}
+    # --------------------------------------------------------
+
+    records_by_date: dict = {d: {} for d in class_dates}
+    for record in records:
+        records_by_date.setdefault(record.date, {})[record.student_id] = record
+
+    # --------------------------------------------------------
+    # Build one session per class date, with every student
+    # --------------------------------------------------------
+
+    sessions = []
+
+    for class_date in class_dates:
+
+        present_map = records_by_date.get(class_date, {})
+
+        session_records = []
+        present_count = 0
+
+        for student in students:
+
+            record = present_map.get(student.id)
+
+            if record:
+                present_count += 1
+                status = "Present"
+                time_in = (
+                    record.time_in.isoformat()
+                    if record.time_in
+                    else None
+                )
+                time_out = (
+                    record.time_out.isoformat()
+                    if record.time_out
+                    else None
+                )
+            else:
+                status = "Absent"
+                time_in = None
+                time_out = None
+
+            session_records.append(
+                {
+                    "student_id": student.id,
+                    "student_number": student.student_number,
+                    "student_name": (
+                        f"{student.first_name} {student.last_name}"
+                    ),
+                    "date": class_date.isoformat(),
+                    "time_in": time_in,
+                    "time_out": time_out,
+                    "status": status,
+                }
+            )
+
+        sessions.append(
+            {
+                "date": class_date.isoformat(),
+                "present": present_count,
+                "absent": len(students) - present_count,
+                "total_registered": len(students),
+                "records": session_records,
+            }
+        )
+
+    # --------------------------------------------------------
+    # Summary counters
+    # --------------------------------------------------------
+
+    total_students = len(students)
+    total_sessions = len(class_dates)
+    total_present = len(records)
+    total_expected = total_students * total_sessions
+    total_absent = max(total_expected - total_present, 0)
 
     return {
         "module": {
             "id": module.id,
             "module_code": module.module_code,
-            "module_name": module.module_name
+            "module_name": module.module_name,
         },
-        "attendance": [
-            {
-                "attendance_id": attendance.id,
-                "student_id": student.id,
-                "student_number": student.student_number,
-                "student_name": (
-                    f"{student.first_name} {student.last_name}"
-                ),
-                "date": attendance.date.isoformat(),
-                "time_in": (
-                    attendance.time_in.isoformat()
-                    if attendance.time_in
-                    else None
-                ),
-                "time_out": (
-                    attendance.time_out.isoformat()
-                    if attendance.time_out
-                    else None
-                ),
-                "status": "Present"
-            }
-            for attendance, student in records
-        ],
-        "total_records": len(records)
+        "total_students": total_students,
+        "total_class_dates": total_sessions,
+        "total_present_records": total_present,
+        "total_absent_records": total_absent,
+        "sessions": sessions,
     }
-
-
 # ============================================================
 # 4. OVERALL ATTENDANCE FOR A MODULE
 # ============================================================
