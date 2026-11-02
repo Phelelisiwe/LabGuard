@@ -1,61 +1,57 @@
-﻿
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import "./AdminDashboard.css";
+
+const API_URL = "https://labguard-dklp.onrender.com";
 
 const functions = [
   {
     short: "ST",
     title: "Student Management",
-    description:
-      "Register students and maintain their details for laboratory access and attendance.",
+    description: "Register students and maintain their details for laboratory access and attendance.",
     action: "Register student",
     path: "/admin/register-student",
   },
   {
     short: "EM",
     title: "Employee Management",
-    description:
-      "Register lecturers, assistant lecturers, cleaners and IT specialists.",
+    description: "Register lecturers, assistant lecturers, cleaners and IT specialists.",
     action: "Register employee",
     path: "/admin/register-employee",
   },
   {
     short: "AL",
     title: "Lecturer Assignment",
-    description:
-      "Assign lecturers to modules for class management and attendance.",
+    description: "Assign lecturers to modules for class management and attendance.",
     action: "Assign lecturer",
     path: "/admin/assign-lecturer",
   },
   {
     short: "MOD",
     title: "Module Administration",
-    description:
-      "Create modules and assign students to their registered modules.",
+    description: "Create modules and assign students to their registered modules.",
     action: "Create module",
     path: "/admin/create-module",
   },
   {
     short: "MS",
     title: "Manage Students",
-    description:
-      "View and manage existing student accounts.",
+    description: "View and manage existing student accounts.",
     action: "Manage students",
     path: "/admin/students",
   },
   {
     short: "ME",
     title: "Manage Employees",
-    description:
-      "View and manage existing employee accounts.",
+    description: "View and manage existing employee accounts.",
     action: "Manage employees",
     path: "/admin/employees",
   },
   {
     short: "DU",
     title: "Delete User",
-    description:
-      "Open the account deletion page for authorised user removals.",
+    description: "Open the account deletion page for authorised user removals.",
     action: "Manage users",
     path: "/admin/delete-user",
     danger: true,
@@ -64,18 +60,53 @@ const functions = [
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("access_token");
 
-  const attendanceTrend = [68, 77, 70, 84, 92, 88, 96];
-  const operations = [
-    { name: "Students", value: 86, color: "blue" },
-    { name: "Access checks", value: 74, color: "gold" },
-    { name: "Module activity", value: 91, color: "green" },
-    { name: "Access alerts", value: 62, color: "red" },
-  ];
+  // Real Data State
+  const [studentCount, setStudentCount] = useState("...");
+  const [employeeCount, setEmployeeCount] = useState("...");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fetchStats = async () => {
+      try {
+        // Fetching real counts from your existing endpoints
+        const headers = { Authorization: `Bearer ${token}` };
+        
+        // Assuming these endpoints exist based on your routes
+        const [studentsRes, employeesRes] = await Promise.all([
+          axios.get(`${API_URL}/admin/students`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`${API_URL}/admin/employees`, { headers }).catch(() => ({ data: [] }))
+        ]);
+
+        const students = Array.isArray(studentsRes.data) ? studentsRes.data : studentsRes.data.students || [];
+        const employees = Array.isArray(employeesRes.data) ? employeesRes.data : employeesRes.data.employees || [];
+
+        setStudentCount(students.length);
+        setEmployeeCount(employees.length);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [navigate, token]);
+
+  // Real Data Stat Cards
   const statCards = [
-    { label: "Students", value: "1,248", note: "+8% this term" },
-    { label: "Attendance", value: "89%", note: "healthy rate" },
-    { label: "Alerts", value: "14", note: "requires review" },
+    { label: "Total Students", value: loading ? "..." : studentCount, note: "registered in system" },
+    { label: "Total Employees", value: loading ? "..." : employeeCount, note: "lecturers & staff" },
+    { label: "System Status", value: "Online", note: "all services active" },
   ];
 
   return (
@@ -109,7 +140,6 @@ function AdminDashboard() {
           <div className="lg-welcome-mark" aria-hidden="true">
             LG
           </div>
-
           <div className="lg-welcome-text">
             <h2>Welcome to LabGuard Administration</h2>
             <p>
@@ -120,53 +150,8 @@ function AdminDashboard() {
           </div>
         </div>
 
-        <div className="lg-analytics-row">
-          <div className="lg-analytics-card">
-            <div className="lg-analytics-header">
-              <div>
-                <span>ATTENDANCE</span>
-                <h3>Weekly overview</h3>
-              </div>
-              <strong>89%</strong>
-            </div>
-
-            <div className="lg-mini-chart" aria-label="Weekly attendance chart">
-              {attendanceTrend.map((value, index) => (
-                <div key={index} className="lg-mini-bar-group">
-                  <div className="lg-mini-bar-track">
-                    <div className="lg-mini-bar-fill" style={{ height: `${value}%` }} />
-                  </div>
-                  <span>{["M", "T", "W", "T", "F", "S", "S"][index]}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="lg-analytics-card">
-            <div className="lg-analytics-header">
-              <div>
-                <span>OPERATIONS</span>
-                <h3>System health</h3>
-              </div>
-            </div>
-
-            <div className="lg-progress-list">
-              {operations.map((item) => (
-                <div key={item.name} className="lg-progress-item">
-                  <div className="lg-progress-label">
-                    <span>{item.name}</span>
-                    <strong>{item.value}%</strong>
-                  </div>
-                  <div className="lg-progress-track">
-                    <div className={`lg-progress-fill ${item.color}`} style={{ width: `${item.value}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="lg-stat-grid">
+        {/* REMOVED FAKE CHARTS & REPLACED WITH REAL STAT CARDS */}
+        <div className="lg-stat-grid" style={{ marginTop: "20px" }}>
           {statCards.map((card) => (
             <div key={card.label} className="lg-stat-card">
               <span>{card.label}</span>
@@ -176,14 +161,12 @@ function AdminDashboard() {
           ))}
         </div>
 
-        <div className="lg-function-grid">
+        <div className="lg-function-grid" style={{ marginTop: "30px" }}>
           {functions.map((item) => (
             <button
               key={item.path}
               type="button"
-              className={`lg-function-card ${
-                item.danger ? "lg-function-card-danger" : ""
-              }`}
+              className={`lg-function-card ${item.danger ? "lg-function-card-danger" : ""}`}
               onClick={() => navigate(item.path)}
             >
               <span className="lg-function-icon">{item.short}</span>
@@ -194,30 +177,6 @@ function AdminDashboard() {
               </span>
             </button>
           ))}
-
-          <div className="lg-function-card lg-function-card-info">
-            <span className="lg-function-icon">ATT</span>
-            <h3>Attendance Management</h3>
-            <p>
-              Support secure attendance tracking for registered modules
-              using the LabGuard verification workflow.
-            </p>
-            <span className="lg-function-note">
-              Uses the attendance workflow configured in LabGuard.
-            </span>
-          </div>
-
-          <div className="lg-function-card lg-function-card-info">
-            <span className="lg-function-icon">SEC</span>
-            <h3>Access Control</h3>
-            <p>
-              Support secure laboratory access through registered
-              users and verified phone-based checks.
-            </p>
-            <span className="lg-function-note">
-              Access depends on registration and verification.
-            </span>
-          </div>
         </div>
 
         <div className="lg-notice">
