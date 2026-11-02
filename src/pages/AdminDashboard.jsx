@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "./AdminDashboard.css";
+import "./LecturerDashBoard.css"; // Use the sidebar CSS
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
@@ -9,7 +9,7 @@ const functions = [
   {
     short: "ST",
     title: "Student Management",
-    description: "Register students and maintain their details for laboratory access and attendance.",
+    description: "Register students and maintain their details for laboratory access.",
     action: "Register student",
     path: "/admin/register-student",
   },
@@ -19,6 +19,13 @@ const functions = [
     description: "Register lecturers, assistant lecturers, cleaners and IT specialists.",
     action: "Register employee",
     path: "/admin/register-employee",
+  },
+  {
+    short: "BIO",
+    title: "Register Biometrics",
+    description: "Capture physical FPM10A fingerprints and phone biometrics.",
+    action: "Open biometrics",
+    path: "/admin/register-biometrics",
   },
   {
     short: "AL",
@@ -75,10 +82,9 @@ function AdminDashboard() {
 
     const fetchStats = async () => {
       try {
-        // Fetching real counts from your existing endpoints
         const headers = { Authorization: `Bearer ${token}` };
         
-        // Assuming these endpoints exist based on your routes
+        // Fetch real counts from your API
         const [studentsRes, employeesRes] = await Promise.all([
           axios.get(`${API_URL}/admin/students`, { headers }).catch(() => ({ data: [] })),
           axios.get(`${API_URL}/admin/employees`, { headers }).catch(() => ({ data: [] }))
@@ -102,7 +108,6 @@ function AdminDashboard() {
     fetchStats();
   }, [navigate, token]);
 
-  // Real Data Stat Cards
   const statCards = [
     { label: "Total Students", value: loading ? "..." : studentCount, note: "registered in system" },
     { label: "Total Employees", value: loading ? "..." : employeeCount, note: "lecturers & staff" },
@@ -110,10 +115,10 @@ function AdminDashboard() {
   ];
 
   return (
-    <div className="lg-main">
-      <section className="lg-page-top">
+    <main className="lecturer-main">
+      <section className="lecturer-topbar">
         <div>
-          <span className="lg-eyebrow">ADMINISTRATION</span>
+          <span className="lecturer-eyebrow">ADMINISTRATION</span>
           <h1>Dashboard</h1>
           <p>
             Manage laboratory users, access control and academic
@@ -121,79 +126,68 @@ function AdminDashboard() {
           </p>
         </div>
 
-        <div className="lg-status">
-          <span className="lg-status-dot" />
-          <span>Admin portal</span>
+        <div className="lecturer-topbar-profile">
+          <div className="lecturer-avatar">A</div>
+          <span>Super Admin</span>
         </div>
       </section>
 
-      <section className="lg-overview">
-        <div className="lg-overview-heading">
+      <section className="lecturer-welcome" style={{ marginTop: "20px" }}>
+        <div>
+          <p className="lecturer-eyebrow">YOUR WORKSPACE</p>
+          <h2>System Overview</h2>
+          <p>Select a feature to manage the LabGuard system.</p>
+        </div>
+        <div className="lecturer-welcome-icon">▤</div>
+      </section>
+
+      {/* REAL DATA STAT CARDS */}
+      <section className="lecturer-stat-grid" style={{ marginTop: "20px" }}>
+        {statCards.map((card) => (
+          <div key={card.label} className="lecturer-stat-card">
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{card.note}</small>
+          </div>
+        ))}
+      </section>
+
+      {/* ACTION CARDS */}
+      <section className="lecturer-module-panel" style={{ marginTop: "30px" }}>
+        <div className="lecturer-section-heading">
           <div>
-            <span className="lg-eyebrow">YOUR WORKSPACE</span>
-            <h2>System Overview</h2>
-            <p>Select a feature to manage the LabGuard system.</p>
+            <h2>Quick Actions</h2>
+            <p>Choose an action to continue.</p>
           </div>
         </div>
 
-        <div className="lg-dashboard-welcome">
-          <div className="lg-welcome-mark" aria-hidden="true">
-            LG
-          </div>
-          <div className="lg-welcome-text">
-            <h2>Welcome to LabGuard Administration</h2>
-            <p>
-              LabGuard helps manage laboratory users, module assignments,
-              access control and secure attendance. Use the shortcuts below
-              to access available features.
-            </p>
-          </div>
-        </div>
-
-        {/* REMOVED FAKE CHARTS & REPLACED WITH REAL STAT CARDS */}
-        <div className="lg-stat-grid" style={{ marginTop: "20px" }}>
-          {statCards.map((card) => (
-            <div key={card.label} className="lg-stat-card">
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <small>{card.note}</small>
-            </div>
-          ))}
-        </div>
-
-        <div className="lg-function-grid" style={{ marginTop: "30px" }}>
+        <div className="lecturer-action-grid">
           {functions.map((item) => (
             <button
               key={item.path}
               type="button"
-              className={`lg-function-card ${item.danger ? "lg-function-card-danger" : ""}`}
+              className="lecturer-action-card"
+              style={{ borderColor: item.danger ? "#f0c5cb" : "" }}
               onClick={() => navigate(item.path)}
             >
-              <span className="lg-function-icon">{item.short}</span>
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-              <span className="lg-function-link">
-                {item.action} <span aria-hidden="true">→</span>
+              <span className="lecturer-action-icon students-icon" style={{ background: item.danger ? "#fff1f2" : "#eaf2fb", color: item.danger ? "#8d1428" : "#003b70" }}>
+                {item.short}
+              </span>
+              <span className="lecturer-action-title">{item.title}</span>
+              <span className="lecturer-action-description">{item.description}</span>
+              <span className="lecturer-action-link" style={{ color: item.danger ? "#8d1428" : "" }}>
+                {item.action} →
               </span>
             </button>
           ))}
         </div>
-
-        <div className="lg-notice">
-          <span className="lg-notice-mark" aria-hidden="true">i</span>
-          <p>
-            <strong>Security reminder:</strong> Verify user details
-            before making account changes. Only authorised administrators
-            should manage user accounts and continue the attendance workflow.
-          </p>
-        </div>
       </section>
 
-      <footer className="lg-footer">
+      <footer className="lecturer-footer">
         <span>LabGuard</span>
         <span>Secure laboratory access and management</span>
       </footer>
-    </div>
+    </main>
   );
 }
 
