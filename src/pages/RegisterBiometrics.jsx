@@ -39,7 +39,10 @@ function RegisterBiometrics() {
 
   const handleEnroll = async (e) => {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      setError("Please select a user first.");
+      return;
+    }
 
     setLoading(true);
     setError("");
