@@ -1,11 +1,21 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import "./LecturerDashBoard.css";
 
 function LecturerLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const email = localStorage.getItem("email") || "Lecturer";
   const initials = email.charAt(0).toUpperCase();
-  const moduleId = localStorage.getItem("selected_lecturer_module");
+
+  // Re-read on every route change so a module newly selected on the
+  // dashboard is reflected in the sidebar without a full reload.
+  const moduleId = useMemo(
+    () => localStorage.getItem("selected_lecturer_module"),
+    [location.pathname]
+  );
+
   const modulePath = moduleId
     ? `/lecturer/students/${moduleId}`
     : "/lecturer/modules";
