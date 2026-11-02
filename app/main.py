@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
 
-
 # =========================================================
 # MODELS
 # =========================================================
@@ -24,17 +23,13 @@ from app.models.attendance import (
 )
 
 from app.models.biometric import StudentBiometric
-
 from app.models.timetable import Timetable
-from app.routers import webauthn
-app.include_router(webauthn.router)
-
 from app.models.attendance_session import AttendanceSession
 from app.models.notification import ClassNotification
 
 
 # =========================================================
-# ROUTERS
+# ROUTERS IMPORT
 # =========================================================
 
 from app.routers.student import router as student_router
@@ -43,36 +38,16 @@ from app.routers.auth import router as auth_router
 from app.routers.otp import router as otp_router
 
 from app.routers.module import router as module_router
-from app.routers.student_module import (
-    router as student_module_router
-)
+from app.routers.student_module import router as student_module_router
+from app.routers.attendance import router as attendance_router
+from app.routers.employee import router as employee_router
+from app.routers.lecturer import router as lecturer_router
 
-from app.routers.attendance import (
-    router as attendance_router
-)
-
-from app.routers.employee import (
-    router as employee_router
-)
-
-from app.routers.lecturer import (
-    router as lecturer_router
-)
-
-from app.routers.biometric import (
-    router as biometric_router
-)
-
-from app.routers.timetable import (
-    router as timetable_router
-)
-
-from app.routers.attendance_session import (
-    router as attendance_session_router
-)
+from app.routers.biometric import router as biometric_router
+from app.routers.timetable import router as timetable_router
+from app.routers.attendance_session import router as attendance_session_router
 
 from app.routers import forgot_password
-
 from app.routers import webauthn
 
 
@@ -115,34 +90,26 @@ app.add_middleware(
 
 
 # =========================================================
-# ROUTERS
+# INCLUDE ROUTERS
 # =========================================================
 
 app.include_router(auth_router)
 app.include_router(otp_router)
-
 app.include_router(admin_router)
-
 app.include_router(student_router)
-
 app.include_router(employee_router)
-
 app.include_router(lecturer_router)
-
 app.include_router(module_router)
-
 app.include_router(student_module_router)
-
 app.include_router(attendance_router)
-
 app.include_router(timetable_router)
-app.include_router(webauthn.router)
 app.include_router(attendance_session_router)
-
-app.include_router(biometric_router)
-
 app.include_router(forgot_password.router)
-app.include_router(biometrics.router)
+
+# Biometrics Routers
+app.include_router(biometric_router)
+app.include_router(webauthn.router) # <--- Added properly down here
+
 
 # =========================================================
 # ROOT
@@ -150,7 +117,6 @@ app.include_router(biometrics.router)
 
 @app.get("/")
 def root():
-
     return {
         "success": True,
         "message": "LabGuard backend is running"
