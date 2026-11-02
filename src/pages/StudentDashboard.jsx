@@ -28,12 +28,17 @@ function StudentDashboard() {
         const [profileRes, modulesRes, notifRes] = await Promise.all([
           axios.get(`${API_URL}/student/me`, { headers }),
           axios.get(`${API_URL}/student/modules`, { headers }),
-          axios.get(`${API_URL}/student/notifications`, { headers }).catch(() => ({ data: { notifications: [] } })) // Catch if endpoint fails
+          // Catch notification errors so the whole page doesn't crash
+          axios.get(`${API_URL}/student/notifications`, { headers }).catch(() => ({ data: { notifications: [] } }))
         ]);
 
         setProfile(profileRes.data);
         setModules(modulesRes.data);
-        setNotifications(notifRes.data?.notifications || []);
+        
+        // SAFE EXTRACTION: The backend returns { unread_count: 0, notifications: [...] }
+        const fetchedNotifs = notifRes.data?.notifications || [];
+        setNotifications(Array.isArray(fetchedNotifs) ? fetchedNotifs : []);
+
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.clear();
@@ -68,7 +73,10 @@ function StudentDashboard() {
           <h1>Welcome, {profile?.first_name || "Student"}</h1>
         </div>
         <div className="lecturer-topbar-profile">
-          <div className="lecturer-avatar">{profile?.first_name?.charAt(0)}</div>
+          {/* Safe charAt extraction */}
+          <div className="lecturer-avatar">
+            {profile?.first_name && typeof profile.first_name === 'string' ? profile.first_name.charAt(0) : "S"}
+          </div>
           <span>{profile?.email}</span>
         </div>
       </header>
@@ -83,7 +91,6 @@ function StudentDashboard() {
         </div>
       </section>
 
-      {/* Quick Stats */}
       <section className="lecturer-stat-grid">
         <div className="lecturer-stat-card">
           <span>MODULES</span>
@@ -97,7 +104,6 @@ function StudentDashboard() {
         </div>
       </section>
 
-      {/* Recent Notifications Panel */}
       <section className="lecturer-notification-panel">
         <div className="lecturer-section-heading">
           <div>
