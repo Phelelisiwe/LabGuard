@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./App.css";
-import AdminLayout from "./pages/AdminLayout";
 
+import AdminLayout from "./pages/AdminLayout";
+import RegisterBiometrics from "./pages/RegisterBiometrics"; // <-- Added
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import OTPVerification from "./pages/OTPVerification";
@@ -47,13 +48,16 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        
         {/* SUPER ADMIN - SHARED LAYOUT */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="register-student" element={<RegisterStudent />} />
           <Route path="register-employee" element={<RegisterEmployee />} />
+          
+          {/* BIOMETRICS ROUTE ADDED HERE */}
+          <Route path="register-biometrics" element={<RegisterBiometrics />} />
+          
           <Route path="students" element={<ManageStudents />} />
           <Route path="employees" element={<ManageEmployees />} />
           <Route path="delete-user" element={<DeleteUser />} />
