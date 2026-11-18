@@ -10,6 +10,9 @@ from app.database import get_db
 from app.dependencies import require_role
 from app.models.attendance import Module, StudentModule, Attendance
 from app.models.student import Student
+from app.models.notification import ClassNotification
+from app.schemas.notification import ClassNotificationCreate
+from app.email_service import send_class_notification_email
 
 
 router = APIRouter(
@@ -137,18 +140,200 @@ def get_module_students(
     }
 
 
+@router.get("/modules/{module_id}/students/download")
+def download_module_students(
+    module_id: int,
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db)
+):
+    """Download the student roster for a lecturer's module as CSV."""
+
+    lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
+
+    students = (
+        db.query(Student)
+        .join(
+            StudentModule,
+            Student.id == StudentModule.student_id
+        )
+        .filter(StudentModule.module_id == module.id)
+        .order_by(Student.student_number)
+        .all()
+    )
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Module Code",
+        "Module Name",
+        "Student Number",
+        "First Name",
+        "Last Name",
+        "Course",
+        "Year",
+        "Email"
+    ])
+
+    for student in students:
+        writer.writerow([
+            module.module_code,
+            module.module_name,
+            student.student_number,
+            student.first_name,
+            student.last_name,
+            student.course,
+            student.current_year,
+            student.email
+        ])
+
+    output.seek(0)
+    filename = f"{module.module_code}_students.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+def serialize_notification(notification, module_code: str):
+    return {
+        "id": notification.id,
+        "module_id": notification.module_id,
+        "module_code": module_code,
+        "type": notification.type,
+        "title": notification.title,
+        "message": notification.message,
+        "created_at": notification.created_at.isoformat(),
+    }
+
+
+@router.get("/modules/{module_id}/notifications")
+def get_module_notifications(
+    module_id: int,
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
+    notifications = (
+        db.query(ClassNotification)
+        .filter(ClassNotification.module_id == module.id)
+        .order_by(ClassNotification.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    return [
+        serialize_notification(notification, module.module_code)
+        for notification in notifications
+    ]
+
+
+@router.post("/modules/{module_id}/notifications")
+def create_module_notification(
+    module_id: int,
+    payload: ClassNotificationCreate,
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    title = payload.title.strip()
+    message = payload.message.strip()
+    if not title or not message:
+        raise HTTPException(
+            status_code=422,
+            detail="Notification title and message cannot be blank.",
+        )
+
+    lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
+    students = (
+        db.query(Student)
+        .join(StudentModule, StudentModule.student_id == Student.id)
+        .filter(StudentModule.module_id == module.id)
+        .order_by(Student.student_number)
+        .all()
+    )
+
+    if not students:
+        raise HTTPException(
+            status_code=400,
+            detail="There are no students registered for this module.",
+        )
+
+    notification = ClassNotification(
+        module_id=module.id,
+        lecturer_id=lecturer_id,
+        type=payload.type,
+        title=title,
+        message=message,
+    )
+
+    try:
+        db.add(notification)
+        db.commit()
+        db.refresh(notification)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the student notification.",
+        )
+
+    email_sent = 0
+    email_failed = 0
+    for student in students:
+        if not student.email:
+            email_failed += 1
+            continue
+
+        try:
+            send_class_notification_email(
+                student.email,
+                module.module_code,
+                payload.type,
+                notification.title,
+                notification.message,
+            )
+            email_sent += 1
+        except (RuntimeError, ValueError):
+            email_failed += 1
+
+    return {
+        "notification": serialize_notification(
+            notification,
+            module.module_code,
+        ),
+        "email_delivery": {
+            "total": len(students),
+            "sent": email_sent,
+            "failed": email_failed,
+        },
+    }
+
+
 # ============================================================
 # 3. VIEW ALL ATTENDANCE RECORDS FOR A MODULE
+#    (grouped by date, absent students included)
 # ============================================================
 
 @router.get("/modules/{module_id}/attendance")
 def get_module_attendance(
     module_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None,
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db)
 ):
     """
-    Return all attendance records for a lecturer's module.
+    Return attendance for a lecturer's module, grouped by class date.
+
+    Every registered student appears in every session:
+      - status "Present" if an attendance record exists for that date
+      - status "Absent"  otherwise (time_in/time_out are null)
     """
 
     lecturer_id = current_user["user_id"]
@@ -159,55 +344,151 @@ def get_module_attendance(
         db
     )
 
-    records = (
-        db.query(
-            Attendance,
-            Student
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date must be on or before end date."
         )
+
+    # --------------------------------------------------------
+    # All registered students for this module
+    # --------------------------------------------------------
+
+    students = (
+        db.query(Student)
         .join(
-            Student,
-            Attendance.student_id == Student.id
+            StudentModule,
+            Student.id == StudentModule.student_id
         )
-        .filter(
-            Attendance.module_id == module.id
-        )
-        .order_by(
-            Attendance.date.desc(),
-            Attendance.time_in.desc()
-        )
+        .filter(StudentModule.module_id == module.id)
+        .order_by(Student.student_number)
         .all()
     )
+
+    # --------------------------------------------------------
+    # Class dates for this module (date-filtered)
+    # --------------------------------------------------------
+
+    date_query = (
+        db.query(Attendance.date)
+        .filter(Attendance.module_id == module.id)
+    )
+    if start_date:
+        date_query = date_query.filter(Attendance.date >= start_date)
+    if end_date:
+        date_query = date_query.filter(Attendance.date <= end_date)
+
+    class_dates = [
+        row[0]
+        for row in date_query
+        .distinct()
+        .order_by(Attendance.date.desc())
+        .all()
+    ]
+
+    # --------------------------------------------------------
+    # Attendance records for this module (date-filtered)
+    # --------------------------------------------------------
+
+    records_query = (
+        db.query(Attendance)
+        .filter(Attendance.module_id == module.id)
+    )
+    if start_date:
+        records_query = records_query.filter(Attendance.date >= start_date)
+    if end_date:
+        records_query = records_query.filter(Attendance.date <= end_date)
+
+    records = records_query.all()
+
+    # --------------------------------------------------------
+    # Index records: {date: {student_id: record}}
+    # --------------------------------------------------------
+
+    records_by_date: dict = {d: {} for d in class_dates}
+    for record in records:
+        records_by_date.setdefault(record.date, {})[record.student_id] = record
+
+    # --------------------------------------------------------
+    # Build one session per class date, with every student
+    # --------------------------------------------------------
+
+    sessions = []
+
+    for class_date in class_dates:
+
+        present_map = records_by_date.get(class_date, {})
+
+        session_records = []
+        present_count = 0
+
+        for student in students:
+
+            record = present_map.get(student.id)
+
+            if record:
+                present_count += 1
+                status = "Present"
+                time_in = (
+                    record.time_in.isoformat()
+                    if record.time_in
+                    else None
+                )
+                time_out = (
+                    record.time_out.isoformat()
+                    if record.time_out
+                    else None
+                )
+            else:
+                status = "Absent"
+                time_in = None
+                time_out = None
+
+            session_records.append(
+                {
+                    "student_id": student.id,
+                    "student_number": student.student_number,
+                    "student_name": (
+                        f"{student.first_name} {student.last_name}"
+                    ),
+                    "date": class_date.isoformat(),
+                    "time_in": time_in,
+                    "time_out": time_out,
+                    "status": status,
+                }
+            )
+
+        sessions.append(
+            {
+                "date": class_date.isoformat(),
+                "present": present_count,
+                "absent": len(students) - present_count,
+                "total_registered": len(students),
+                "records": session_records,
+            }
+        )
+
+    # --------------------------------------------------------
+    # Summary counters
+    # --------------------------------------------------------
+
+    total_students = len(students)
+    total_sessions = len(class_dates)
+    total_present = len(records)
+    total_expected = total_students * total_sessions
+    total_absent = max(total_expected - total_present, 0)
 
     return {
         "module": {
             "id": module.id,
             "module_code": module.module_code,
-            "module_name": module.module_name
+            "module_name": module.module_name,
         },
-        "attendance": [
-            {
-                "attendance_id": attendance.id,
-                "student_id": student.id,
-                "student_number": student.student_number,
-                "student_name": (
-                    f"{student.first_name} {student.last_name}"
-                ),
-                "date": attendance.date.isoformat(),
-                "time_in": (
-                    attendance.time_in.isoformat()
-                    if attendance.time_in
-                    else None
-                ),
-                "time_out": (
-                    attendance.time_out.isoformat()
-                    if attendance.time_out
-                    else None
-                ),
-                "status": "Present"
-            }
-            for attendance, student in records
-        ],
-        "total_records": len(records)
+        "total_students": total_students,
+        "total_class_dates": total_sessions,
+        "total_present_records": total_present,
+        "total_absent_records": total_absent,
+        "sessions": sessions,
     }
 
 
@@ -372,90 +653,102 @@ def get_overall_attendance(
 @router.get("/modules/{module_id}/attendance/download")
 def download_module_attendance(
     module_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    student_id: int | None = None,  # NEW: Filter by specific student
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db)
 ):
     """
     Download attendance records for a specific module as CSV.
+    Includes "Absent" students if they did not attend a class.
     """
-
     lecturer_id = current_user["user_id"]
+    module = get_lecturer_module(module_id, lecturer_id, db)
 
-    module = get_lecturer_module(
-        module_id,
-        lecturer_id,
-        db
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=400, detail="Start date must be on or before end date.")
+
+    # 1. Get students (filtered if a specific student is chosen)
+    students_query = (
+        db.query(Student)
+        .join(StudentModule, Student.id == StudentModule.student_id)
+        .filter(StudentModule.module_id == module.id)
     )
+    if student_id:
+        students_query = students_query.filter(Student.id == student_id)
+    
+    students = students_query.order_by(Student.student_number).all()
+    student_ids = [s.id for s in students]
 
+    if not students:
+        raise HTTPException(status_code=404, detail="No students found for this criteria.")
+
+    # 2. Get class dates
+    date_query = db.query(Attendance.date).filter(Attendance.module_id == module.id)
+    if start_date:
+        date_query = date_query.filter(Attendance.date >= start_date)
+    if end_date:
+        date_query = date_query.filter(Attendance.date <= end_date)
+    
+    class_dates = [row[0] for row in date_query.distinct().order_by(Attendance.date.asc()).all()]
+
+    if not class_dates:
+        raise HTTPException(status_code=404, detail="No attendance records found for this period.")
+
+    # 3. Get all attendance records for these dates and students
     records = (
-        db.query(
-            Attendance,
-            Student
-        )
-        .join(
-            Student,
-            Attendance.student_id == Student.id
-        )
+        db.query(Attendance)
         .filter(
-            Attendance.module_id == module.id
-        )
-        .order_by(
-            Attendance.date.asc(),
-            Student.student_number.asc()
+            Attendance.module_id == module.id,
+            Attendance.date.in_(class_dates),
+            Attendance.student_id.in_(student_ids)
         )
         .all()
     )
+    
+    # Map records for quick lookup: {date: {student_id: record}}
+    records_map = {}
+    for r in records:
+        if r.date not in records_map:
+            records_map[r.date] = {}
+        records_map[r.date][r.student_id] = r
 
+    # 4. Generate CSV
     output = StringIO()
-
     writer = csv.writer(output)
+    writer.writerow(["Module", "Student No.", "Student Name", "Date", "Time In", "Time Out", "Status"])
 
-    writer.writerow([
-        "Module Code",
-        "Module Name",
-        "Student Number",
-        "Student Name",
-        "Date",
-        "Time In",
-        "Time Out",
-        "Status"
-    ])
+    for class_date in class_dates:
+        for student in students:
+            record = records_map.get(class_date, {}).get(student.id)
+            
+            if record:
+                status = "Present"
+                time_in = record.time_in.strftime("%H:%M:%S") if record.time_in else ""
+                time_out = record.time_out.strftime("%H:%M:%S") if record.time_out else ""
+            else:
+                status = "Absent"
+                time_in = ""
+                time_out = ""
 
-    for attendance, student in records:
-
-        writer.writerow([
-            module.module_code,
-            module.module_name,
-            student.student_number,
-            f"{student.first_name} {student.last_name}",
-            attendance.date.isoformat(),
-            (
-                attendance.time_in.isoformat()
-                if attendance.time_in
-                else ""
-            ),
-            (
-                attendance.time_out.isoformat()
-                if attendance.time_out
-                else ""
-            ),
-            "Present"
-        ])
+            writer.writerow([
+                module.module_code,
+                student.student_number,
+                f"{student.first_name} {student.last_name}",
+                class_date.isoformat(),
+                time_in,
+                time_out,
+                status
+            ])
 
     output.seek(0)
-
-    filename = (
-        f"{module.module_code}_attendance.csv"
-    )
+    filename = f"{module.module_code}_attendance.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="{filename}"'
-            )
-        }
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
@@ -597,4 +890,94 @@ def predict_next_attendance(
             "Average attendance rate of the "
             "most recent five recorded classes"
         )
+    }
+
+
+# ============================================================
+# 7. LECTURER DASHBOARD SUMMARY
+# ============================================================
+
+@router.get("/dashboard/summary")
+def get_lecturer_dashboard_summary(
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    """
+    Aggregated numbers for the lecturer dashboard.
+    Replaces N per-module calls with one.
+    """
+    lecturer_id = current_user["user_id"]
+
+    modules = (
+        db.query(Module)
+        .filter(Module.lecturer_id == lecturer_id)
+        .order_by(Module.module_code)
+        .all()
+    )
+
+    module_summaries = []
+    distinct_student_ids: set[int] = set()
+    total_classes_all = 0
+    total_present_all = 0
+    total_possible_all = 0
+
+    for module in modules:
+        student_ids = [
+            sid
+            for (sid,) in db.query(StudentModule.student_id)
+            .filter(StudentModule.module_id == module.id)
+            .all()
+        ]
+        total_students = len(student_ids)
+        distinct_student_ids.update(student_ids)
+
+        classes_held = (
+            db.query(Attendance.date)
+            .filter(Attendance.module_id == module.id)
+            .distinct()
+            .count()
+        )
+
+        present_records = (
+            db.query(Attendance)
+            .filter(Attendance.module_id == module.id)
+            .count()
+        )
+
+        possible = total_students * classes_held
+        rate = (present_records / possible * 100) if possible > 0 else 0.0
+
+        module_summaries.append({
+            "module_id": module.id,
+            "module_code": module.module_code,
+            "module_name": module.module_name,
+            "level": module.level,
+            "total_students": total_students,
+            "classes_held": classes_held,
+            "overall_attendance_rate": round(rate, 2),
+        })
+
+        total_classes_all += classes_held
+        total_present_all += present_records
+        total_possible_all += possible
+
+    overall_rate = (
+        (total_present_all / total_possible_all * 100)
+        if total_possible_all > 0
+        else 0.0
+    )
+
+    total_notifications_sent = (
+        db.query(ClassNotification)
+        .filter(ClassNotification.lecturer_id == lecturer_id)
+        .count()
+    )
+
+    return {
+        "total_modules": len(modules),
+        "total_distinct_students": len(distinct_student_ids),
+        "total_classes_held": total_classes_all,
+        "overall_attendance_rate": round(overall_rate, 2),
+        "total_notifications_sent": total_notifications_sent,
+        "modules": module_summaries,
     }

@@ -662,18 +662,21 @@
   }
 
   .lg-layout {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .lg-sidebar {
-    width: 100%;
-    flex: none;
-    padding: 14px;
+    position: sticky;
+    top: 0;
+    width: 220px;
+    flex: 0 0 220px;
+    padding: 14px 10px;
+    min-height: 100vh;
   }
 
   .lg-sidebar-heading,
   .lg-sidebar-bottom {
-    display: none;
+    display: block;
   }
 
   .lg-sidebar-nav {
@@ -683,6 +686,7 @@
   .lg-sidebar-link {
     min-height: 42px;
     padding: 7px 9px;
+    font-size: 12px;
   }
 
   .lg-sidebar-icon {
