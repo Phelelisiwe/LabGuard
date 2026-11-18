@@ -1,5 +1,4 @@
-﻿
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -35,6 +34,15 @@ function AssignLecturer() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [allModules, setAllModules] = useState([]);
+  const [scheduleForm, setScheduleForm] = useState({
+    moduleId: "",
+    lecturerId: "",
+    day: "Monday",
+    startTime: "08:00",
+    endTime: "09:00",
+    laboratory: "",
+  });
 
   const getConfig = () => ({
     headers: {
@@ -64,12 +72,14 @@ function AssignLecturer() {
 
     try {
       const config = getConfig();
-      const [timetableResponse, employeesResponse] = await Promise.all([
+      const [timetableResponse, employeesResponse, modulesResponse] = await Promise.all([
         axios.get(`${API_URL}/timetable/`, config),
         axios.get(`${API_URL}/admin/employees`, config),
+        axios.get(`${API_URL}/admin/modules`, config),
       ]);
 
       setTimetable(timetableResponse.data);
+      setAllModules(modulesResponse.data);
 
       setLecturers(
         employeesResponse.data.filter((employee) =>
@@ -225,6 +235,64 @@ function AssignLecturer() {
       await loadData();
     } catch (err) {
       console.error("Module lecturer assignment failed:", err);
+      setError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleScheduleChange = (event) => {
+    const { name, value } = event.target;
+    setScheduleForm((previous) => ({ ...previous, [name]: value }));
+    setMessage("");
+    setError("");
+  };
+
+  const handleCreateSchedule = async (event) => {
+    event.preventDefault();
+
+    if (
+      !scheduleForm.moduleId ||
+      !scheduleForm.lecturerId ||
+      !scheduleForm.laboratory.trim()
+    ) {
+      setError("Select a module and lecturer, then enter the laboratory.");
+      return;
+    }
+
+    if (scheduleForm.startTime >= scheduleForm.endTime) {
+      setError("Start time must be earlier than end time.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      await axios.post(
+        `${API_URL}/timetable/`,
+        {
+          module_id: Number(scheduleForm.moduleId),
+          lecturer_id: Number(scheduleForm.lecturerId),
+          day_of_week: scheduleForm.day,
+          start_time: scheduleForm.startTime,
+          end_time: scheduleForm.endTime,
+          laboratory: scheduleForm.laboratory.trim(),
+        },
+        getConfig()
+      );
+
+      setMessage(
+        `Class scheduled successfully for South African time (SAST, UTC+2): ${scheduleForm.day} ${scheduleForm.startTime}–${scheduleForm.endTime}.`
+      );
+      setScheduleForm((previous) => ({
+        ...previous,
+        lecturerId: "",
+        laboratory: "",
+      }));
+      await loadData();
+    } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setSaving(false);
@@ -419,6 +487,99 @@ function AssignLecturer() {
                   </table>
                 </div>
               )}
+            </section>
+
+            <section className="admin-card">
+              <h2>Schedule a Class</h2>
+              <p>
+                Schedule in South African Standard Time (SAST), UTC+2.
+              </p>
+
+              <form onSubmit={handleCreateSchedule}>
+                <label htmlFor="schedule-module">Module</label>
+                <select
+                  id="schedule-module"
+                  name="moduleId"
+                  value={scheduleForm.moduleId}
+                  onChange={handleScheduleChange}
+                >
+                  <option value="">-- Select Module --</option>
+                  {allModules.map((module) => (
+                    <option key={module.id} value={String(module.id)}>
+                      {module.module_code} — {module.module_name}
+                    </option>
+                  ))}
+                </select>
+
+                <label htmlFor="schedule-lecturer">Lecturer</label>
+                <select
+                  id="schedule-lecturer"
+                  name="lecturerId"
+                  value={scheduleForm.lecturerId}
+                  onChange={handleScheduleChange}
+                >
+                  <option value="">-- Select Lecturer --</option>
+                  {lecturers.map((lecturer) => (
+                    <option key={lecturer.id} value={String(lecturer.id)}>
+                      {lecturer.first_name} {lecturer.last_name}
+                    </option>
+                  ))}
+                </select>
+
+                <label htmlFor="schedule-day">Day</label>
+                <select
+                  id="schedule-day"
+                  name="day"
+                  value={scheduleForm.day}
+                  onChange={handleScheduleChange}
+                >
+                  {DAYS.map((day) => (
+                    <option key={day} value={day}>{day}</option>
+                  ))}
+                </select>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <label htmlFor="schedule-start">Start time (SAST)</label>
+                    <input
+                      id="schedule-start"
+                      name="startTime"
+                      type="time"
+                      value={scheduleForm.startTime}
+                      onChange={handleScheduleChange}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="schedule-end">End time (SAST)</label>
+                    <input
+                      id="schedule-end"
+                      name="endTime"
+                      type="time"
+                      value={scheduleForm.endTime}
+                      onChange={handleScheduleChange}
+                    />
+                  </div>
+                </div>
+
+                <label htmlFor="schedule-laboratory">Laboratory</label>
+                <input
+                  id="schedule-laboratory"
+                  name="laboratory"
+                  type="text"
+                  placeholder="e.g. Lab A"
+                  value={scheduleForm.laboratory}
+                  onChange={handleScheduleChange}
+                />
+
+                <button
+                  type="submit"
+                  className="dashboard-button"
+                  style={{ marginTop: "16px" }}
+                  disabled={saving}
+                >
+                  {saving ? "Scheduling..." : "Schedule Class"}
+                </button>
+              </form>
             </section>
 
             <button

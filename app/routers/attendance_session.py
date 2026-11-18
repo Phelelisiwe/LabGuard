@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 import math
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import require_role
+from app.time_utils import sa_now
 
 from app.models.timetable import Timetable
 from app.models.attendance_session import AttendanceSession
@@ -20,28 +21,144 @@ router = APIRouter(
 
 
 # =========================================================
+# ATTENDANCE SESSION PAYLOADS
+# =========================================================
+
+class StartAttendancePayload(BaseModel):
+    timetable_id: int | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+
+def close_expired_attendance_sessions(db: Session) -> None:
+    """Close active sessions whose scheduled end time has passed."""
+    now = sa_now()
+    today = now.date()
+
+    sessions = db.query(AttendanceSession).filter(
+        AttendanceSession.status == "active",
+        AttendanceSession.session_date == today,
+    ).all()
+
+    changed = False
+    for session in sessions:
+        timetable = db.query(Timetable).filter(
+            Timetable.id == session.timetable_id
+        ).first()
+
+        if timetable and now.time() >= timetable.end_time:
+            session.closed_at = now
+            session.status = "closed"
+            changed = True
+
+    if changed:
+        db.commit()
+
+
+# =========================================================
+# LECTURER SCHEDULE - AUTHENTICATED
+# =========================================================
+
+@router.get("/schedule")
+def lecturer_schedule(
+    current_user=Depends(require_role("lecturer")),
+    db: Session = Depends(get_db),
+):
+    lecturer_id = current_user["user_id"]
+    today = sa_now().strftime("%A")
+
+    schedule = db.query(Timetable).filter(
+        Timetable.lecturer_id == lecturer_id,
+        Timetable.active.is_(True),
+    ).order_by(
+        Timetable.day_of_week,
+        Timetable.start_time,
+    ).all()
+
+    today_schedule = [
+        item for item in schedule
+        if item.day_of_week == today
+    ]
+
+    return {
+        "success": True,
+        "today": today,
+        "schedule": [
+            {
+                "timetable_id": item.id,
+                "module_id": item.module_id,
+                "module_code": (
+                    item.module.module_code if item.module else None
+                ),
+                "module_name": (
+                    item.module.module_name if item.module else None
+                ),
+                "day_of_week": item.day_of_week,
+                "start_time": str(item.start_time),
+                "end_time": str(item.end_time),
+                "laboratory": item.laboratory,
+                "is_today": item.day_of_week == today,
+            }
+            for item in schedule
+        ],
+        "today_schedule": [
+            {
+                "timetable_id": item.id,
+                "module_id": item.module_id,
+                "module_code": (
+                    item.module.module_code if item.module else None
+                ),
+                "module_name": (
+                    item.module.module_name if item.module else None
+                ),
+                "day_of_week": item.day_of_week,
+                "start_time": str(item.start_time),
+                "end_time": str(item.end_time),
+                "laboratory": item.laboratory,
+            }
+            for item in today_schedule
+        ],
+    }
+
+
+# =========================================================
 # START ATTENDANCE SESSION - LECTURER
 # =========================================================
 
 @router.post("/start")
 def start_attendance_session(
+    payload: StartAttendancePayload = StartAttendancePayload(),
     current_user=Depends(require_role("lecturer")),
     db: Session = Depends(get_db),
 ):
     lecturer_id = current_user["user_id"]
 
-    now = datetime.now()
+    now = sa_now()
     today = now.date()
     current_time = now.time()
     day = now.strftime("%A")
+
+    close_expired_attendance_sessions(db)
 
     classes = db.query(Timetable).filter(
         Timetable.lecturer_id == lecturer_id,
         Timetable.day_of_week == day,
         Timetable.start_time <= current_time,
         Timetable.end_time >= current_time,
-        Timetable.active == True,
+        Timetable.active.is_(True),
     ).all()
+
+    if payload.timetable_id is not None:
+        selected = next(
+            (item for item in classes if item.id == payload.timetable_id),
+            None,
+        )
+        if selected is None:
+            raise HTTPException(
+                status_code=400,
+                detail="This class is not scheduled and active right now.",
+            )
+        classes = [selected]
 
     if not classes:
         raise HTTPException(
@@ -61,6 +178,8 @@ def start_attendance_session(
                 {
                     "timetable_id": item.id,
                     "module_id": item.module_id,
+                    "module_code": item.module.module_code if item.module else None,
+                    "module_name": item.module.module_name if item.module else None,
                     "laboratory": item.laboratory,
                     "start_time": str(item.start_time),
                     "end_time": str(item.end_time),
@@ -82,6 +201,12 @@ def start_attendance_session(
             Module.id == existing.module_id
         ).first()
 
+        if payload.latitude is not None and payload.longitude is not None:
+            existing.latitude = payload.latitude
+            existing.longitude = payload.longitude
+            db.commit()
+            db.refresh(existing)
+
         return {
             "success": True,
             "already_active": True,
@@ -91,6 +216,8 @@ def start_attendance_session(
             "module_name": module.module_name if module else None,
             "laboratory": existing.laboratory,
             "opened_at": str(existing.opened_at),
+            "latitude": existing.latitude,
+            "longitude": existing.longitude,
         }
 
     session = AttendanceSession(
@@ -100,6 +227,8 @@ def start_attendance_session(
         laboratory=timetable.laboratory,
         session_date=today,
         opened_at=now,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
         status="active",
     )
 
@@ -120,6 +249,8 @@ def start_attendance_session(
         "module_name": module.module_name if module else None,
         "laboratory": session.laboratory,
         "opened_at": str(session.opened_at),
+        "latitude": session.latitude,
+        "longitude": session.longitude,
         "status": session.status,
     }
 
@@ -134,6 +265,7 @@ def close_attendance_session(
     db: Session = Depends(get_db),
 ):
     lecturer_id = current_user["user_id"]
+    close_expired_attendance_sessions(db)
 
     session = db.query(AttendanceSession).filter(
         AttendanceSession.lecturer_id == lecturer_id,
@@ -148,7 +280,7 @@ def close_attendance_session(
             detail="No active attendance session found.",
         )
 
-    session.closed_at = datetime.now()
+    session.closed_at = sa_now()
     session.status = "closed"
 
     db.commit()
@@ -174,6 +306,7 @@ def current_attendance_session(
     db: Session = Depends(get_db),
 ):
     lecturer_id = current_user["user_id"]
+    close_expired_attendance_sessions(db)
 
     session = db.query(AttendanceSession).filter(
         AttendanceSession.lecturer_id == lecturer_id,
@@ -220,7 +353,8 @@ def student_current_attendance_session(
     db: Session = Depends(get_db),
 ):
     student_id = current_user["user_id"]
-    today = datetime.now().date()
+    close_expired_attendance_sessions(db)
+    today = sa_now().date()
 
     session = (
         db.query(AttendanceSession)
@@ -314,7 +448,7 @@ def gps_check_in(
     db: Session = Depends(get_db),
 ):
     student_id = current_user["user_id"]
-    now = datetime.now()
+    now = sa_now()
     today = now.date()
 
     session = db.query(AttendanceSession).filter(

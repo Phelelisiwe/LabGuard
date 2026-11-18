@@ -1,5 +1,4 @@
-
-from datetime import datetime
+﻿from datetime import datetime
 import base64
 import json
 import os
@@ -19,6 +18,7 @@ from app.models.attendance_session import AttendanceSession
 from app.models.timetable import Timetable
 from app.schemas.biometric import FaceRegistration, FingerprintRegistration
 from app.dependencies import require_role
+from app.time_utils import sa_now
 
 from webauthn import (
     generate_registration_options,
@@ -183,7 +183,7 @@ def verify_esp32_token(device_token: str):
 def get_active_attendance_session(student_id: int, db: Session):
     session = db.query(AttendanceSession).filter(
         AttendanceSession.status == "active",
-        AttendanceSession.session_date == datetime.now().date(),
+        AttendanceSession.session_date == sa_now().date(),
     ).first()
 
     if session is None:
@@ -242,12 +242,12 @@ def save_attendance(student_id: int, session, method: str, db: Session):
             student_id=student_id,
             module_id=session.module_id,
             date=session.session_date,
-            time_in=datetime.now(),
+            time_in=sa_now(),
         )
         db.add(attendance)
         action = "check_in"
     elif attendance.time_out is None:
-        attendance.time_out = datetime.now().time()
+        attendance.time_out = sa_now().time()
         action = "check_out"
     else:
         raise HTTPException(
@@ -1486,7 +1486,7 @@ def start_lecturer_session_from_sensor(
     employee: Employee,
     db: Session,
 ):
-    now = datetime.now()
+    now = sa_now()
     today = now.date()
     current_time = now.time()
     day = now.strftime("%A")

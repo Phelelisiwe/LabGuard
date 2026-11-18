@@ -16,6 +16,21 @@
   --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(242, 183, 5, 0.14), transparent 24%),
+    radial-gradient(circle at 88% 18%, rgba(76, 152, 211, 0.20), transparent 28%),
+    linear-gradient(135deg, #eef4fb 0%, #dfeafa 48%, #edf2f8 100%);
+  background-attachment: fixed;
+}
+
 .lecturer-dashboard {
   min-height: 100vh;
   display: flex;
@@ -472,6 +487,7 @@
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 59, 112, 0.4);
 }
+
 /* =========================================================
    LABGUARD ADMIN DASHBOARD STYLES (TUT BRANDED)
    ========================================================= */
@@ -650,4 +666,105 @@
 
 .delete-button:hover {
   background: #a10d24;
+}
+
+/* =========================================================
+   LABGUARD GLOBAL GLASS BACKGROUND
+   ========================================================= */
+
+.lg-page,
+.login-page,
+.registration-page,
+.auth-page,
+.modern-reset-page,
+.modern-update-page,
+.admin-page,
+.admin-shell,
+.modern-student-dashboard,
+.simple-modules-page,
+.user-management-page,
+.delete-user-page,
+.dashboard,
+.lecturer-dashboard,
+.lecturer-page,
+.overall-page,
+.prediction-page,
+.attendance-page,
+.modern-modules-page {
+  background:
+    linear-gradient(135deg, rgba(4, 24, 52, 0.08), rgba(0, 91, 172, 0.06)),
+    url("https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=2000&q=85") center / cover fixed;
+}
+
+.admin-card,
+.lecturer-module-panel,
+.lecturer-notification-panel,
+.lecturer-schedule-panel,
+.lecturer-analytics-card,
+.lecturer-stat-card,
+.lecturer-action-card,
+.lecturer-selected-module,
+.lecturer-notice-item,
+.lecturer-active-session,
+.lecturer-schedule-item,
+.modern-student-welcome,
+.student-chart-card,
+.student-progress-card,
+.modern-student-card,
+.student-info-card,
+.attendance-card,
+.attendance-table-card,
+.modern-modules-card,
+.modern-update-card,
+.auth-card,
+.login-card,
+.registration-card,
+.reset-card,
+.overall-card,
+.prediction-card,
+.ls-student-card,
+.lecturer-attendance-card {
+  background: rgba(255, 255, 255, 0.76) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 16px 38px rgba(16, 36, 59, 0.12) !important;
+}
+
+.admin-navbar,
+.admin-topbar,
+.lecturer-topbar,
+.lecturer-sidebar,
+.modern-student-nav,
+.lecturer-page-header,
+.lecturer-footer,
+.modern-modules-header,
+.modern-update-header {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.admin-content,
+.lecturer-main,
+.modern-student-content,
+.lecturer-page-content,
+.modern-modules-content,
+.modern-update-content {
+  position: relative;
+}
+
+.admin-content::before,
+.lecturer-main::before,
+.modern-student-content::before,
+.lecturer-page-content::before,
+.modern-modules-content::before,
+.modern-update-content::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.35), transparent 22%),
+    radial-gradient(circle at 82% 78%, rgba(242, 183, 5, 0.10), transparent 24%);
 }

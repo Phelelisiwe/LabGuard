@@ -1,5 +1,4 @@
-
-import logging
+﻿import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +11,7 @@ from app.models.attendance import Module
 from app.models.employee import Employee
 from app.schemas.timetable import TimetableCreate, TimetableResponse
 from app.auth_token import get_current_user
+from app.time_utils import sa_now
 
 
 logger = logging.getLogger(__name__)
@@ -534,7 +534,7 @@ def get_current_timetable(
 ):
     require_super_admin(current_user)
 
-    today = datetime.now().strftime("%A")
+    today = sa_now().strftime("%A")
 
     if today not in VALID_DAYS:
         return []

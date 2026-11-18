@@ -1,4 +1,4 @@
-import math
+﻿import math
 from pydantic import BaseModel, Field
 from app.models.attendance_session import AttendanceSession
 from datetime import datetime
@@ -19,6 +19,7 @@ from app.schemas.attendance import (
     AttendanceResponse,
 )
 from app.dependencies import require_role
+from app.time_utils import sa_now
 
 
 router = APIRouter(
@@ -86,7 +87,7 @@ def check_out(
 
     student_id = current_user["user_id"]
 
-    today = datetime.now().date()
+    today = sa_now().date()
 
     attendance = db.query(
         Attendance
@@ -110,7 +111,7 @@ def check_out(
             detail="Student has already checked out.",
         )
 
-    attendance.time_out = datetime.now().time()
+    attendance.time_out = sa_now().time()
 
     db.commit()
     db.refresh(attendance)
@@ -239,7 +240,7 @@ def gps_check_in(
     db: Session = Depends(get_db),
 ):
     student_id = current_user["user_id"]
-    now = datetime.now()
+    now = sa_now()
     today = now.date()
 
     # Find the active session for today.
@@ -284,7 +285,7 @@ def gps_check_in(
 
     # GPS proximity alone cannot guarantee that someone is inside.
     # Use a conservative radius and test its accuracy at your lab.
-    allowed_distance = 10
+    allowed_distance = 50
 
     if distance > allowed_distance:
         raise HTTPException(

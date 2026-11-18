@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -58,7 +57,7 @@ function StudentCheckIn() {
     try {
       // This is the existing attendance-session current endpoint.
       const response = await axios.get(
-        `${API_URL}/attendance-session/current`,
+        `${API_URL}/attendance-session/student/current`,
         { headers: authHeaders }
       );
 
@@ -494,7 +493,10 @@ function StudentCheckIn() {
             <div className="heading-icon">✓</div>
             <div>
               <h3>Lab Check-In / Check-Out</h3>
-              <p>No manual module selection is required.</p>
+              <p>
+                Primary: ESP32 fingerprint sensor. Use phone backup only if
+                the sensor is unavailable.
+              </p>
             </div>
           </div>
 
@@ -557,8 +559,8 @@ function StudentCheckIn() {
                 disabled={loading || checkingClass || !activeClass}
               >
                 {loading && method === "fingerprint"
-                  ? "Verifying Fingerprint..."
-                  : "🖐 Verify Fingerprint & Check In"}
+                  ? "Verifying Backup Fingerprint..."
+                  : "🖐 Phone Fingerprint Backup"}
               </button>
 
               <button
@@ -613,10 +615,9 @@ function StudentCheckIn() {
                 <strong>Attendance information</strong>
               </p>
               <span>
-                LabGuard uses the active class session to determine the
-                module. Face and fingerprint verification require a
-                registered biometric. GPS requires location permission
-                and checks proximity to the saved classroom coordinates.
+                Primary attendance: use the fingerprint sensor connected to
+                the ESP32 in the laboratory. Phone fingerprint, face, and GPS
+                are backup methods for use when the sensor has a problem.
               </span>
             </div>
 

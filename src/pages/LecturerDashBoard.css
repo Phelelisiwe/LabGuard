@@ -1,4 +1,3 @@
-
 :root {
   --lecturer-blue: #003b70;
   --lecturer-navy: #10243b;
@@ -1154,6 +1153,16 @@
   }
 
   .lecturer-footer {
+    flex-direction: column;
+  }
+
+  .lecturer-schedule-item {
+    grid-template-columns: 1fr;
+  }
+
+  .lecturer-schedule-panel .lecturer-section-heading,
+  .lecturer-active-session {
+    align-items: flex-start;
     flex-direction: column;
   }
 }

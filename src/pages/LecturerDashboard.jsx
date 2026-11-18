@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "./LecturerDashboard.css";
+import "./LecturerDashBoard.css";
 
 const API_URL = "https://labguard-dklp.onrender.com";
 
@@ -28,6 +27,11 @@ function LecturerDashboard() {
     title: "",
     message: "",
   });
+  const [schedule, setSchedule] = useState([]);
+  const [todaySchedule, setTodaySchedule] = useState([]);
+  const [activeSession, setActiveSession] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionMessage, setSessionMessage] = useState("");
 
   const token = localStorage.getItem("access_token");
 
@@ -96,6 +100,36 @@ console.log("NUMBER OF MODULES:", response.data?.length);
     };
 
     fetchModules();
+  }, [navigate, token]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const loadSessionData = async () => {
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+      };
+
+      try {
+        const [scheduleResponse, currentResponse] = await Promise.all([
+          axios.get(`${API_URL}/attendance-session/schedule`, config),
+          axios.get(`${API_URL}/attendance-session/current`, config),
+        ]);
+
+        setSchedule(scheduleResponse.data.schedule || []);
+        setTodaySchedule(scheduleResponse.data.today_schedule || []);
+        setActiveSession(
+          currentResponse.data.active ? currentResponse.data : null
+        );
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+        }
+      }
+    };
+
+    loadSessionData();
   }, [navigate, token]);
 
   const handleModuleChange = (event) => {
@@ -195,6 +229,93 @@ console.log("NUMBER OF MODULES:", response.data?.length);
     { name: "Networking", value: 81, color: "green" },
     { name: "Testing", value: 76, color: "purple" },
   ];
+
+  const startAttendance = async (timetableId = null) => {
+    if (!navigator.geolocation) {
+      setError("This phone or browser does not support location services.");
+      return;
+    }
+
+    setSessionLoading(true);
+    setSessionMessage("");
+    setError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const payload = {
+            timetable_id: timetableId,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+
+          const response = await axios.post(
+            `${API_URL}/attendance-session/start`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          if (response.data.multiple_classes) {
+            setSessionMessage(response.data.message);
+            return;
+          }
+
+          setActiveSession(response.data);
+          setSessionMessage(
+            `${response.data.message || "Attendance is now active."} Classroom location saved.`
+          );
+        } catch (err) {
+          setSessionMessage("");
+          setError(
+            err.response?.data?.detail ||
+              "Unable to start the attendance session."
+          );
+        } finally {
+          setSessionLoading(false);
+        }
+      },
+      (locationError) => {
+        setSessionLoading(false);
+        setSessionMessage("");
+
+        if (locationError.code === 1) {
+          setError("Allow location access on this phone before starting attendance.");
+        } else if (locationError.code === 2) {
+          setError("Your phone location is unavailable. Check GPS and try again.");
+        } else {
+          setError("Location request timed out. Please try again.");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  const closeAttendance = async () => {
+    try {
+      setSessionLoading(true);
+      setError("");
+
+      await axios.post(
+        `${API_URL}/attendance-session/close`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setActiveSession(null);
+      setSessionMessage("Attendance session ended successfully.");
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+          "Unable to end the attendance session."
+      );
+    } finally {
+      setSessionLoading(false);
+    }
+  };
 
   return (
     <div className="lecturer-dashboard">
@@ -561,35 +682,106 @@ console.log("NUMBER OF MODULES:", response.data?.length);
 
             <div className="lecturer-notification-list">
               <h3>Recent alerts</h3>
-
-              {notifications.length === 0 ? (
+              {notifications.map((item) => (
+                <div key={item.id} className="lecturer-notice-item">
+                  <div className="lecturer-notice-tag">
+                    {item.type === "late" ? "Late" : "Cancelled"}
+                  </div>
+                  <div className="lecturer-notice-copy">
+                    <strong>{item.title}</strong>
+                    <span>{item.moduleCode}</span>
+                    <p>{item.message}</p>
+                  </div>
+                  <small>
+                    {new Date(item.createdAt).toLocaleString([], {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </small>
+                </div>
+              ))}
+              {notifications.length === 0 && (
                 <div className="lecturer-notice-empty">
                   No student alerts sent yet.
                 </div>
-              ) : (
-                notifications.map((item) => (
-                  <div key={item.id} className="lecturer-notice-item">
-                    <div className="lecturer-notice-tag">
-                      {item.type === "late" ? "Late" : "Cancelled"}
-                    </div>
-                    <div className="lecturer-notice-copy">
-                      <strong>{item.title}</strong>
-                      <span>{item.moduleCode}</span>
-                      <p>{item.message}</p>
-                    </div>
-                    <small>
-                      {new Date(item.createdAt).toLocaleString([], {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </small>
-                  </div>
-                ))
               )}
             </div>
           </div>
+        </section>
+
+        <section className="lecturer-schedule-panel">
+          <div className="lecturer-section-heading">
+            <div>
+              <h2>Today's Class Schedule</h2>
+              <p>Start attendance only during a scheduled class time.</p>
+            </div>
+            <span className={`lecturer-session-status ${activeSession ? "active" : "inactive"}`}>
+              {activeSession ? "Attendance Active" : "No Active Session"}
+            </span>
+          </div>
+
+          {sessionMessage && (
+            <div className="lecturer-session-message" role="status">
+              {sessionMessage}
+            </div>
+          )}
+
+          {todaySchedule.length === 0 ? (
+            <div className="lecturer-schedule-empty">
+              No classes are scheduled for today.
+            </div>
+          ) : (
+            <div className="lecturer-schedule-list">
+              {todaySchedule.map((item) => (
+                <article className="lecturer-schedule-item" key={item.timetable_id}>
+                  <div className="lecturer-schedule-time">
+                    <strong>{item.start_time.slice(0, 5)}</strong>
+                    <span>to {item.end_time.slice(0, 5)}</span>
+                  </div>
+                  <div className="lecturer-schedule-details">
+                    <strong>{item.module_code} — {item.module_name}</strong>
+                    <span>{item.laboratory}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="lecturer-secondary-button"
+                    disabled={sessionLoading || Boolean(activeSession)}
+                    onClick={() => startAttendance(item.timetable_id)}
+                  >
+                    {activeSession ? "Session Active" : "Start Attendance"}
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {activeSession && (
+            <div className="lecturer-active-session">
+              <div>
+                <span>ACTIVE CLASS</span>
+                <strong>
+                  {activeSession.module_code} — {activeSession.module_name}
+                </strong>
+                <p>{activeSession.laboratory}</p>
+              </div>
+              <button
+                type="button"
+                className="lecturer-end-session-button"
+                disabled={sessionLoading}
+                onClick={closeAttendance}
+              >
+                End Attendance
+              </button>
+            </div>
+          )}
+
+          {schedule.length > 0 && (
+            <p className="lecturer-weekly-schedule-count">
+              {schedule.length} scheduled class{schedule.length === 1 ? "" : "es"} this week
+            </p>
+          )}
         </section>
 
         <footer className="lecturer-footer">
