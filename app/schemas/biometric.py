@@ -3,6 +3,18 @@ from pydantic import BaseModel, Field
 
 
 # =========================================================
+# WEBAUTHN REGISTRATION RESPONSE (Face Authentication)
+# =========================================================
+class FaceRegistration(BaseModel):
+    id: str
+    rawId: str
+    response: Dict[str, Any]
+    type: str = "public-key"
+    clientExtensionResults: Dict[str, Any] = Field(default_factory=dict)
+    authenticatorAttachment: str | None = None
+
+
+# =========================================================
 # WEBAUTHN REGISTRATION RESPONSE (Phone Backup)
 # =========================================================
 class FingerprintRegistration(BaseModel):
@@ -19,7 +31,7 @@ class FingerprintRegistration(BaseModel):
 # =========================================================
 class FPM10AEnrollRequest(BaseModel):
     user_id: int
-    user_type: str = "student" # 'student' or 'employee'
+    user_type: str = "student"  # 'student' or 'employee'
 
 
 # =========================================================
@@ -34,7 +46,7 @@ class BiometricResponse(BaseModel):
     fingerprint_enrollment_pending: bool
     fingerprint_revocation_pending: bool
 
-    fingerprint_registered: bool # True if fingerprint_credential_id exists
+    fingerprint_registered: bool  # True if fingerprint_credential_id exists
     fingerprint_sign_count: int
 
     biometric_status: str
